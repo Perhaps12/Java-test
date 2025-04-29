@@ -1,13 +1,16 @@
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Main {
     public static ArrayList<Projectile> proj = new ArrayList<>();
+    public static int max_proj = 1000;
     public static int ind = 0;
     public static Player player = new Player("/Sprites/O-4.png", 600, 100);
+    public static final ConcurrentLinkedQueue<Projectile> queuedProjectiles = new ConcurrentLinkedQueue<>();
+
     public static void main(String[] args) {
         createWall();
         new Gameloop().start();
-
     }  
 
     public static void delay(int n) {
@@ -52,6 +55,9 @@ public class Main {
 
         // floating square
         addWall(9, 700, 900, 150, 200);
+        
+        addWall(10, 705, 765, 510, 520);
+
 
     }
 

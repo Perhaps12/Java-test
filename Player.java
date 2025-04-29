@@ -15,7 +15,6 @@ public class Player{
     
     private boolean jumped = false;
 
-
     public Player(String imagePath, int centerX, int centerY) {
 
         this.pos.first = centerX;
@@ -29,6 +28,7 @@ public class Player{
         wallBox.set(25, 37);
         //buffer 15 on each side
         acc.second = -0.9;
+        
     }
 
     //display ===========================================================================================================
@@ -36,7 +36,7 @@ public class Player{
 
     public void draw(Graphics g) {
         if (image != null) {
-            g.drawImage(image, (int)pos.first-hitbox.first-15, (int)pos.second-hitbox.second-15, null);
+            g.drawImage(image, (int)pos.first-wallBox.first, (int)pos.second-wallBox.second, null);
         }
     }
     
@@ -77,19 +77,19 @@ public class Player{
             pos.second = box[1].second+wallBox.second;
         }
         if(minDist==downDist){
-            pos.second = box[1].first - wallBox.second;
+            pos.second = box[1].first - wallBox.second-1;
         }
 
     }
 
     //direction
-    private int hDirection = 1;
-    private int hDirection2 = 1;
+    public int hDirection = 1;
+    public int hDirection2 = 1;
     //accelerations + velocities
-    private final padr vel = new padr();
-    private final padr vel2 = new padr(); //y axis unused
-    private final padr acc = new padr();
-    private final padr acc2 = new padr(); //x axis unused
+    public final padr vel = new padr();
+    public final padr vel2 = new padr(); //y axis unused
+    public final padr acc = new padr();
+    public final padr acc2 = new padr(); //x axis unused
     private boolean airJump = false; //double jump unused
     private boolean wallSlide = false; //wall slide
     //dash
@@ -98,9 +98,7 @@ public class Player{
     private int coyoteTime = 0;
 
     public void update() {
-        
         shoot();
-
         if(touchingL()||touchingR()||touchingU()){
             // airJump = true;
         }
@@ -320,8 +318,7 @@ public class Player{
     }
 
     // private boolean shot0 = false;
-    private boolean shot1 = false;
-    private boolean shot2 = false;
+    public boolean shot[] = new boolean[999];
     public void shoot(){
 
         //vomit pellets
@@ -330,8 +327,9 @@ public class Player{
             // shot0 = true;
             padr velocity = new padr();
             double tempAngle = (Math.random()*0.3)+0.9;
+            if(Main.proj.size()>Main.max_proj)return;
             velocity.set(hDirection * (20 * Math.cos(tempAngle) + vel.first), Math.sin(tempAngle) *20 + vel.second/2);
-            Projectile p = new Projectile(pos.first, pos.second,0,  velocity);
+            Projectile p = new Projectile(pos.first, pos.second,4,  velocity);
             Main.proj.add(p);
         }
 
@@ -341,13 +339,14 @@ public class Player{
 
 
         //shotgun arrows
-        if(Gameloop.keys.contains(KeyEvent.VK_Z) && !shot1 ){
+        if(Gameloop.keys.contains(KeyEvent.VK_Z) && !shot[1] ){
 
-            shot1 = true;
+            shot[1] = true;
             padr velocity = new padr();
             padr spread = new padr();
             velocity.set(hDirection * (23+vel.first), 0);
             for(int i = 0 ; i < 5; i++){
+                if(Main.proj.size()>Main.max_proj)return;
                 double tempAngle = (Math.random()) * 2*Math.PI;
                 double dist = Math.random() * 0.3 + 1.9;
                 spread.first = dist*Math.cos(tempAngle);
@@ -362,13 +361,14 @@ public class Player{
         }
 
         if(!Gameloop.keys.contains(KeyEvent.VK_Z)){
-            shot1 = false;
+            shot[1] = false;
         }
 
         //returning banana
-        if(Gameloop.keys.contains(KeyEvent.VK_B) && !shot2 ){
+        if(Gameloop.keys.contains(KeyEvent.VK_B) && !shot[2] ){
 
-            shot2 = true;
+            shot[2] = true;
+            if(Main.proj.size()>Main.max_proj)return;
             padr velocity = new padr();
             velocity.set(hDirection * (12), 12);
             Projectile p = new Projectile(pos.first, pos.second, 2,  velocity);
@@ -377,7 +377,49 @@ public class Player{
         }
 
         if(!Gameloop.keys.contains(KeyEvent.VK_B)){
-            shot2 = false;
+            shot[2] = false;
+        }
+
+        //jovial merryment
+        if(Gameloop.keys.contains(KeyEvent.VK_J) && !shot[3] ){
+
+            shot[3] = true;
+            if(Main.proj.size()>Main.max_proj)return;
+            padr velocity = new padr();
+            velocity.set(hDirection * (7), 5);
+            Projectile p = new Projectile(pos.first, pos.second, 3,  velocity);
+            Main.proj.add(p);
+            
+        }
+
+        if(!Gameloop.keys.contains(KeyEvent.VK_J)){
+            shot[3] = false;
+        }
+
+        //exploding pellets
+        if(Gameloop.keys.contains(KeyEvent.VK_V) && !shot[4] ){
+
+            shot[4] = true;
+            
+            
+            new Thread(() -> {
+                for (int i = 0; i < 200; i++) {
+                    if(Main.proj.size()>Main.max_proj)break;
+                    padr velocity = new padr();
+                    velocity.set(Math.random() * 78 - 39, Math.random() * 78 - 39);
+                    Projectile p = new Projectile(pos.first, pos.second, 4, velocity);
+                    Main.queuedProjectiles.add(p);
+                    try {
+                        Thread.sleep(1); // small delay to spread out load
+                    } catch (InterruptedException ignored) {}
+                }
+            }).start();
+            
+            
+        }
+
+        if(!Gameloop.keys.contains(KeyEvent.VK_V)){
+            shot[4] = false;
         }
     }
     //===========================================================================================================

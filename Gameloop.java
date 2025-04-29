@@ -6,13 +6,17 @@ import javax.swing.*;
 
 public class Gameloop extends Canvas implements Runnable, KeyListener {
     private final JFrame frame;
-    private boolean running = false;
+    public static boolean running = false;
     public static final Set<Integer> keys = new HashSet<>();
     public static final int WIDTH = 1920, HEIGHT = 1080;
+    private int frames = 0;
+    private int fps = 0;
+    private long fpsTimer = System.currentTimeMillis();
     
 
     public static void main(String[] args) {
         new Gameloop().start();
+        
     }
 
     public Gameloop() {
@@ -41,15 +45,25 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
 
     @Override
     public void run() {
-        final int fps = 60;
-        final long frameTime = 1_000_000_000 / fps;
+        final long frameTime = 1_000_000_000 / 60;
         long lastTime = System.nanoTime();
 
         while (running) {
+
             long now = System.nanoTime();
             if (now - lastTime >= frameTime) {
                 render();
                 update();
+                // System.out.println(Main.proj.size());
+                frames++;
+
+                if (System.currentTimeMillis() - fpsTimer >= 1000) {
+                    fps = frames;
+                    frames = 0;
+                    fpsTimer += 1000;
+                }
+
+                lastTime = now;
                 lastTime = now;
             }
 
@@ -59,7 +73,15 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
         }
     }
 
-    private void update() {
+    public void update() {
+        while (!Main.queuedProjectiles.isEmpty()) {
+            if (Main.proj.size() < Main.max_proj) {
+                Main.proj.add(Main.queuedProjectiles.poll());
+            } else {
+                // break; // Avoid going over the limit
+                Main.queuedProjectiles.poll();
+            }
+        }
         
         Main.player.update();
         for(int i = 0 ; i < Main.proj.size(); i++){
@@ -99,6 +121,11 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
             p.draw(g);
         }
         Main.player.draw(g);
+
+        g.setColor(Color.BLACK);
+        g.setFont(new Font("Arial", Font.PLAIN, 24));
+        g.drawString("FPS: " + fps, 13, 30);
+        g.drawString("Projectiles: " + Main.proj.size(), 13, 60);
 
 
         g.dispose(); // release Graphics
