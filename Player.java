@@ -9,11 +9,12 @@ import javax.imageio.*;
 public class Player{
 
     private BufferedImage image;
-    public final padr pos = new padr();
+    public final padr pos = new padr(); //position centered
+    //hitboxes
     public final pair hitbox = new pair();
     public final pair wallBox = new pair();
     
-    private boolean jumped = false;
+    private boolean jumped = false; //check if the user has jumped already
 
     public Player(String imagePath, int centerX, int centerY) {
 
@@ -23,17 +24,16 @@ public class Player{
         try {this.image = ImageIO.read(getClass().getResourceAsStream(imagePath));} 
         catch (IOException e) {}
 
-        // hitbox.set(51, 72);
         hitbox.set(10, 22);
         wallBox.set(25, 37);
-        //buffer 15 on each side
+        //set default acceleration downwards
         acc.second = -0.9;
         
     }
 
     //display ===========================================================================================================
     
-
+    //same methods as in NPC.java
     public void draw(Graphics g) {
         if (image != null) {
             g.drawImage(image, (int)pos.first-wallBox.first, (int)pos.second-wallBox.second, null);
@@ -42,6 +42,7 @@ public class Player{
     
     //movement ===========================================================================================================
 
+    //same methods as in NPC.java
     private boolean insideWall(pair[] box){
 
         if(box[0].first <= pos.first-wallBox.first && pos.first-wallBox.first <= box[0].second
@@ -82,31 +83,34 @@ public class Player{
 
     }
 
-    //direction
-    public int hDirection = 1;
-    public int hDirection2 = 1;
+    //direction user is facing
+    public int hDirection = 1; //primary direction
+    public int hDirection2 = 1; //used to adjust velocity in specific scenarios seperate to where player is facing (ex walljump)
     //accelerations + velocities
     public final padr vel = new padr();
-    public final padr vel2 = new padr(); //y axis unused
+    public final padr vel2 = new padr(); //both are used for hotizontal movement
     public final padr acc = new padr();
     public final padr acc2 = new padr(); //x axis unused
     private boolean airJump = false; //double jump unused
     private boolean wallSlide = false; //wall slide
     //dash
     private int dashCool = 45; 
-    //coyote time
+    //coyote time essentially allows the user to jump for a few frames after leaving the ground, improving the user experience in case they mistime slightly
     private int coyoteTime = 0;
 
+    //update player logic
     public void update() {
-        shoot();
-        if(touchingL()||touchingR()||touchingU()){
+        shoot();//check if player attacks at all
+        
+        if(touchingL()||touchingR()||touchingU()){ //double jump disabled for now
             // airJump = true;
         }
-        if(touchingU()){
+        if(touchingU()){ //reset downwards velocity/coyote time when touching the ground
             vel.second = Math.max(-0.2, vel.second);
             coyoteTime = 5;
         }
         
+        //left/right movement
         if (Gameloop.keys.contains(KeyEvent.VK_LEFT)){
             //swap direction slowdown
             if(hDirection==1){
@@ -145,8 +149,10 @@ public class Player{
             acc.first+=1.2;
             // released.second = 0;
         }
+
+        //jumping logic
         if (Gameloop.keys.contains(KeyEvent.VK_UP)){
-            //wall jumps
+            //wall jumps - must be touching wall and causes the player to jump away from the wall
             if(touchingL()&!jumped&&vel2.second<=8){
                 pos.second-=3;
                 vel.second=14.5;
@@ -161,14 +167,15 @@ public class Player{
                 vel2.first = 15;
                 jumped = true;
 
-            }//regular jump
+            }
+            
+            //regular jump - must be touching ground
             else if(coyoteTime>0&&!jumped&&vel2.second<=8){
                 pos.second-=3;
                 vel.second = 16;
-                
                 jumped = true;
             }
-            else if (airJump&&!jumped&&vel2.second<=8){
+            else if (airJump&&!jumped&&vel2.second<=8){ //unused double jump
                 pos.second-=3;
                 vel.second = 14;
                 jumped = true;
@@ -179,15 +186,16 @@ public class Player{
             else acc.second=-1.2;
         }
         else{
-            //make sure continuous holding of jump doesnt work
+            //make sure continuous holding of jump key doesnt keep jumping
             jumped = false;
         }
-        //accelerate downwards
+        //accelerate downwards faster
         if (Gameloop.keys.contains(KeyEvent.VK_DOWN)) acc.second=-1.6;
 
+        //dash
         if (Gameloop.keys.contains(KeyEvent.VK_C)){
             if(dashCool==0){
-                vel2.second = 22;
+                vel2.second = 22; //also prevents a lot of other movement when the dash is active so dash is uninterrupted
                 vel.second = -2;
                 dashCool = 45;
             }
@@ -212,13 +220,14 @@ public class Player{
         vel.first+=acc.first;
         vel.first = Math.max(0, vel.first);
         vel.first = Math.min(7, vel.first); //velocity cap
-            //wall jump velocity
+        //wall jump velocity deacceleration
         vel2.first-=1.5;
         vel2.first=Math.max(0, vel2.first);
-
+        //dash velocity deacceleration
         vel2.second-=2;
         vel2.second=Math.max(0, vel2.second);
             
+        //slightly adjust speed after a walljump
         if(vel2.first+vel.first >= 3 && hDirection!=hDirection2 && vel2.first>0){
             vel.first = Math.max(3-vel2.first, 0);
         }
@@ -231,12 +240,15 @@ public class Player{
 
         //reset gravity to normal
         if(!(Gameloop.keys.contains(KeyEvent.VK_DOWN) || Gameloop.keys.contains(KeyEvent.VK_UP)))acc.second=-1.2;
-        //vertical movement velocuty
+
         
+        //various vertical velocity calculations
+        //tbh i dont remember what this does but its probably important
         if(vel2.second > 3){
             vel.second+=2*acc2.second;
         }
         else if((!wallSlide || vel.second>-2))vel.second+=acc.second;
+
         //wallslide velocity/acceleration
         else{
             vel.second+=acc2.second;
@@ -244,7 +256,7 @@ public class Player{
         }
         if(touchingD())vel.second = -2; //stop velocity when hit ceiling
         vel.second = Math.max(-100, vel.second);
-        vel.second = Math.min(100, vel.second); //cap
+        vel.second = Math.min(100, vel.second); //vertical velocity cap (probably unecessary but just in case)
 
         //vertical movement position
         pos.second-=vel.second;
@@ -257,11 +269,14 @@ public class Player{
             collideWall(box);
         }
 
+        //adjust various cooldowns
         coyoteTime = Math.max(coyoteTime-1, 0);
 
         for(int i = 0 ; i < cooldown.length; i++){
             cooldown[i] = Math.max(0, cooldown[i]-1);
         }
+
+        dashCool = Math.max(dashCool-1, 0);
 
         //debug
         // System.out.println(vel.first + " " + acc.first);
@@ -269,12 +284,10 @@ public class Player{
         // System.out.println(touchingL());
         // System.out.println(vel.second);
         // System.out.println("0 -4");
-
-        dashCool = Math.max(dashCool-1, 0);
     }
 
 
-    //touching upper side of block
+    //same method as in NPC.java
     public boolean touchingU(){
         for(pair[] box : walls.bounds){
             if(  (pos.second+wallBox.second <= box[1].first && pos.second+wallBox.second >= box[1].first-2 )&& !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first)   ){
@@ -314,40 +327,33 @@ public class Player{
     }
     
     // ===========================================================================================================
-
-
-    //actual player functions ===========================================================================================================
-
-    public int cooldown[] = new int[99];
-    // private boolean shot0 = false;
-    public boolean shot[] = new boolean[999];
+    
+    public int cooldown[] = new int[99];//store cooldowns for each projectile type
+    public boolean shot[] = new boolean[99]; //used to prevent autofire when holding down buttons
     public void shoot(){
 
-        //vomit pellets
+        //horizontal ranged attack
         if(Gameloop.keys.contains(KeyEvent.VK_X) && !shot[0] && cooldown[0]==0){
             shot[0]=true;
-            // pos.first+=-hDirection*35;
-            // vel.first = 0;
-
+            //launches player back a bit when fired
             hDirection2 = -hDirection;
             vel2.first = 10;
+            //reset velocities
             vel.first = 0;
             vel.second = 3;
 
             padr velocity = new padr();
-            velocity.set(40, 0);
-            Projectile p = new Projectile(pos.first, pos.second, 4, velocity);
-            Main.proj.add(p);
+            velocity.set(40, 0); //set initial projectile velocity
+            Main.proj.add(new Projectile(pos.first, pos.second, 4, velocity));
             cooldown[0] = 50;
 
         }
-
         if(!Gameloop.keys.contains(KeyEvent.VK_X)){
-            shot[0] = false;
+            shot[0] = false; //detects when letting go of the button to prevent holding to attack
         }
 
 
-        //melee
+        //melee swings
         if(Gameloop.keys.contains(KeyEvent.VK_Z) && !shot[1] && cooldown[1] == 0 ){
             shot[1]=true;
             // pos.first+=-hDirection*35;
@@ -355,14 +361,12 @@ public class Player{
             // System.out.println("hey");
             padr velocity = new padr();
             velocity.set(0, 0);
-            int ID = 1;
-            if(Gameloop.keys.contains(KeyEvent.VK_SPACE))ID = 2;
-            if(Gameloop.keys.contains(KeyEvent.VK_DOWN) && !touchingU()) ID=3;
-            Projectile p = new Projectile(pos.first, pos.second, ID, velocity);
-            Main.proj.add(p);
-            cooldown[1] = 25;
+            int ID = 1; //default to left/right attack
+            if(Gameloop.keys.contains(KeyEvent.VK_SPACE))ID = 2; //if user is holiding space, upwards attack
+            if(Gameloop.keys.contains(KeyEvent.VK_DOWN) && !touchingU()) ID=3; //if user is holding down and is not touching any floor, downwards attack
+            Main.proj.add(new Projectile(pos.first, pos.second, ID, velocity));
+            cooldown[1] = 25; 
         }
-
         if(!Gameloop.keys.contains(KeyEvent.VK_Z)){
             shot[1] = false;
         }
@@ -371,7 +375,7 @@ public class Player{
     }
 
 
-    //how to do multiple at once
+    //code to summon multiple projectiles at once using threads
         // new Thread(() -> {
         //         for (int i = 0; i < 10; i++) {
         //             if(Main.proj.size()>Main.max_proj)break;
