@@ -3,6 +3,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Main {
     public static ArrayList<Projectile> proj = new ArrayList<>();
+    public static ArrayList<Npc> npc = new ArrayList<>();
     public static int max_proj = 1000;
     public static int ind = 0;
     public static Player player = new Player("/Sprites/O-4.png", 600, 100);
@@ -10,6 +11,8 @@ public class Main {
 
     public static void main(String[] args) {
         createWall();
+        npc.add(new Npc(740, 380, 0));
+        
         new Gameloop().start();
     }  
 

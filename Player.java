@@ -259,6 +259,10 @@ public class Player{
 
         coyoteTime = Math.max(coyoteTime-1, 0);
 
+        for(int i = 0 ; i < cooldown.length; i++){
+            cooldown[i] = Math.max(0, cooldown[i]-1);
+        }
+
         //debug
         // System.out.println(vel.first + " " + acc.first);
         // System.out.println(image.getHeight(this) + " " + image.getWidth(this));
@@ -313,115 +317,76 @@ public class Player{
 
 
     //actual player functions ===========================================================================================================
-    public static void main(String[] args){
 
-    }
-
+    public int cooldown[] = new int[99];
     // private boolean shot0 = false;
     public boolean shot[] = new boolean[999];
     public void shoot(){
 
         //vomit pellets
-        if(Gameloop.keys.contains(KeyEvent.VK_X) && !false ){
+        if(Gameloop.keys.contains(KeyEvent.VK_X) && !shot[0] && cooldown[0]==0){
+            shot[0]=true;
+            // pos.first+=-hDirection*35;
+            // vel.first = 0;
 
-            // shot0 = true;
+            hDirection2 = -hDirection;
+            vel2.first = 10;
+            vel.first = 0;
+            vel.second = 3;
+
             padr velocity = new padr();
-            double tempAngle = (Math.random()*0.3)+0.9;
-            if(Main.proj.size()>Main.max_proj)return;
-            velocity.set(hDirection * (20 * Math.cos(tempAngle) + vel.first), Math.sin(tempAngle) *20 + vel.second/2);
-            Projectile p = new Projectile(pos.first, pos.second,4,  velocity);
+            velocity.set(40, 0);
+            Projectile p = new Projectile(pos.first, pos.second, 4, velocity);
             Main.proj.add(p);
+            cooldown[0] = 50;
+
         }
 
         if(!Gameloop.keys.contains(KeyEvent.VK_X)){
-            // shot0 = false;
+            shot[0] = false;
         }
 
 
-        //shotgun arrows
-        if(Gameloop.keys.contains(KeyEvent.VK_Z) && !shot[1] ){
-
-            shot[1] = true;
+        //melee
+        if(Gameloop.keys.contains(KeyEvent.VK_Z) && !shot[1] && cooldown[1] == 0 ){
+            shot[1]=true;
+            // pos.first+=-hDirection*35;
+            // vel.first = 0;
+            // System.out.println("hey");
             padr velocity = new padr();
-            padr spread = new padr();
-            velocity.set(hDirection * (23+vel.first), 0);
-            for(int i = 0 ; i < 5; i++){
-                if(Main.proj.size()>Main.max_proj)return;
-                double tempAngle = (Math.random()) * 2*Math.PI;
-                double dist = Math.random() * 0.3 + 1.9;
-                spread.first = dist*Math.cos(tempAngle);
-                spread.second = dist*Math.sin(tempAngle);
-                padr fin = new padr();
-                fin.first = spread.first+velocity.first;
-                fin.second = spread.second+velocity.second;
-                Projectile p = new Projectile(pos.first, pos.second, 1,  fin);
-                Main.proj.add(p);
-            }
-            
+            velocity.set(0, 0);
+            int ID = 1;
+            if(Gameloop.keys.contains(KeyEvent.VK_SPACE))ID = 2;
+            if(Gameloop.keys.contains(KeyEvent.VK_DOWN) && !touchingU()) ID=3;
+            Projectile p = new Projectile(pos.first, pos.second, ID, velocity);
+            Main.proj.add(p);
+            cooldown[1] = 25;
         }
 
         if(!Gameloop.keys.contains(KeyEvent.VK_Z)){
             shot[1] = false;
         }
 
-        //returning banana
-        if(Gameloop.keys.contains(KeyEvent.VK_B) && !shot[2] ){
 
-            shot[2] = true;
-            if(Main.proj.size()>Main.max_proj)return;
-            padr velocity = new padr();
-            velocity.set(hDirection * (12), 12);
-            Projectile p = new Projectile(pos.first, pos.second, 2,  velocity);
-            Main.proj.add(p);
-            
-        }
-
-        if(!Gameloop.keys.contains(KeyEvent.VK_B)){
-            shot[2] = false;
-        }
-
-        //jovial merryment
-        if(Gameloop.keys.contains(KeyEvent.VK_J) && !shot[3] ){
-
-            shot[3] = true;
-            if(Main.proj.size()>Main.max_proj)return;
-            padr velocity = new padr();
-            velocity.set(hDirection * (7), 5);
-            Projectile p = new Projectile(pos.first, pos.second, 3,  velocity);
-            Main.proj.add(p);
-            
-        }
-
-        if(!Gameloop.keys.contains(KeyEvent.VK_J)){
-            shot[3] = false;
-        }
-
-        //exploding pellets
-        if(Gameloop.keys.contains(KeyEvent.VK_V) && !shot[4] ){
-
-            shot[4] = true;
-            
-            
-            new Thread(() -> {
-                for (int i = 0; i < 200; i++) {
-                    if(Main.proj.size()>Main.max_proj)break;
-                    padr velocity = new padr();
-                    velocity.set(Math.random() * 78 - 39, Math.random() * 78 - 39);
-                    Projectile p = new Projectile(pos.first, pos.second, 4, velocity);
-                    Main.queuedProjectiles.add(p);
-                    try {
-                        Thread.sleep(1); // small delay to spread out load
-                    } catch (InterruptedException ignored) {}
-                }
-            }).start();
-            
-            
-        }
-
-        if(!Gameloop.keys.contains(KeyEvent.VK_V)){
-            shot[4] = false;
-        }
     }
+
+
+    //how to do multiple at once
+        // new Thread(() -> {
+        //         for (int i = 0; i < 10; i++) {
+        //             if(Main.proj.size()>Main.max_proj)break;
+                    
+        //             padr velocity = new padr();
+        //             double tempAngle = (Math.random()*0.3)+0.9;
+        //             if(Main.proj.size()>Main.max_proj)return;
+        //             velocity.set(hDirection * (20 * Math.cos(tempAngle) + vel.first), Math.sin(tempAngle) *20 + vel.second/2);
+        //             Projectile p = new Projectile(pos.first, pos.second,0,  velocity);
+        //             Main.queuedProjectiles.add(p);
+        //             try {
+        //                 Thread.sleep(1); // small delay to spread out load
+        //             } catch (InterruptedException ignored) {}
+        //         }
+        //     }).start();
     //===========================================================================================================
 
 

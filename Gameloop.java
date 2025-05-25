@@ -12,15 +12,9 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
     private int frames = 0;
     private int fps = 0;
     private long fpsTimer = System.currentTimeMillis();
-    
-
-    public static void main(String[] args) {
-        new Gameloop().start();
-        
-    }
 
     public Gameloop() {
-        frame = new JFrame("BufferStrategy Game");
+        frame = new JFrame("CS CPT");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setIgnoreRepaint(true); 
         // frame.setResizable(false);
@@ -82,12 +76,27 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
                 Main.queuedProjectiles.poll();
             }
         }
+
+        // for(Projectile p : Main.proj){
+        //     System.out.print(p.ID + " ");
+        // }System.out.println("");
         
         Main.player.update();
+
         for(int i = 0 ; i < Main.proj.size(); i++){
             Main.proj.get(i).update();
             if(!Main.proj.get(i).active){
                 Main.proj.remove(i);
+                i--;
+            }
+        }
+
+        
+
+        for(int i = 0 ; i < Main.npc.size(); i++){
+            Main.npc.get(i).update();
+            if(!Main.npc.get(i).active){
+                Main.npc.remove(i);
                 i--;
             }
         }
@@ -108,6 +117,8 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
         for (int y = 0; y < HEIGHT; y += 50)
             g.drawLine(0, y, WIDTH, y);
 
+        g.setStroke(new BasicStroke(3));
+        
         //wall
         g.setColor(Color.BLACK);
         int I = -1;
@@ -117,15 +128,32 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
             g.fillRect(i[0].first, i[1].first, i[0].second-i[0].first, i[1].second-i[1].first);
         }
 
+        g.setColor(Color.RED);   
         for(Projectile p : Main.proj){
             p.draw(g);
+            g.drawRect(p.box[0].first, p.box[1].first, p.box[0].second-p.box[0].first, p.box[1].second-p.box[1].first);        
         }
+
+        for(Npc p : Main.npc){
+            p.draw(g);
+            g.drawRect(p.box[0].first, p.box[1].first, p.box[0].second-p.box[0].first, p.box[1].second-p.box[1].first);        
+        }
+
+        g.setStroke(new BasicStroke(1));
+
         Main.player.draw(g);
+
+        // String keyPress = "| ";
+        // for(int i : keys){
+        //     keyPress+=i + " ";
+        // }
 
         g.setColor(Color.BLACK);
         g.setFont(new Font("Arial", Font.PLAIN, 24));
         g.drawString("FPS: " + fps, 13, 30);
         g.drawString("Projectiles: " + Main.proj.size(), 13, 60);
+        if(Main.npc.size()>0)g.drawString("Damage: " + Main.npc.get(0).damage, 13, 90);
+        // g.drawString("Keys: " + keyPress, 13, 120);
 
 
         g.dispose(); // release Graphics
