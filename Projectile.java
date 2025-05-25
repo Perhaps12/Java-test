@@ -4,6 +4,7 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 
 public class Projectile {
+    //mostly same variables as NPC.java
     public boolean active = true;
     private BufferedImage image;
     public int ID;
@@ -33,30 +34,37 @@ public class Projectile {
         last = System.nanoTime();
 
         switch (projID) {
+            //so far projectile sprites have not been added
+
+            //horizontal melee attack
             case 1 -> {
                 wallBox.set(45, 40);
                 hitbox.set(15, 15);
                 way = Main.player.hDirection;
             }
 
+            //upwards melee attack
             case 2 -> {
                 wallBox.set(30, 50);
                 hitbox.set(15, 15);
                 way = Main.player.hDirection;
             }
 
+            //downwards melee attack
             case 3 -> {
                 wallBox.set(30, 50);
                 hitbox.set(15, 15);
                 way = Main.player.hDirection;
             }
 
+            //horizontal ranged attack
             case 4 -> {
                 wallBox.set(35, 28);
                 hitbox.set(15, 15);
                 way = Main.player.hDirection;
             }
 
+            //unused default
             default -> {
                 try{image = ImageIO.read(getClass().getResource("/Sprites/friendlinessPellet.png"));}
                 catch(IOException | IllegalArgumentException e){}
@@ -70,6 +78,7 @@ public class Projectile {
 
     //display ===========================================================================================================
     
+    //same method as in NPC.java
     public void draw(Graphics g) {
         if (active && image != null) {
             g.drawImage(image, (int)pos.first-(int)wallBox.first, (int)pos.second-(int)wallBox.second, null);
@@ -78,26 +87,26 @@ public class Projectile {
 
     //movement ===========================================================================================================
 
-    private int insideWall(pair[] box){
-        //1 left wall  2 right wall  3 top wall  4 bottom wall
+    //same methods as in NPC.java
+    private boolean insideWall(pair[] box){
 
         if(box[1].first < pos.second-wallBox.second && pos.second-wallBox.second < box[1].second
-            &&!(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first))return 3;
+            &&!(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first))return true;
 
         if(box[1].first < pos.second+wallBox.second && pos.second+wallBox.second < box[1].second
-                && !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first))return 4;
+                && !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first))return true;
 
         if(box[0].first < pos.first-wallBox.first && pos.first-wallBox.first < box[0].second
-            &&!(pos.second-wallBox.second > box[1].second || pos.second+wallBox.second < box[1].first))return 1;
+            &&!(pos.second-wallBox.second > box[1].second || pos.second+wallBox.second < box[1].first))return true;
 
         if(box[0].first < pos.first+wallBox.first && pos.first+wallBox.first < box[0].second
-            &&!(pos.second-wallBox.second > box[1].second || pos.second+wallBox.second < box[1].first))return 2;
-        return 0;
+            &&!(pos.second-wallBox.second > box[1].second || pos.second+wallBox.second < box[1].first))return true;
+        return false;
     }
 
     private void collideWall(pair[] box){
         
-        if(insideWall(box) == 0)return;
+        if(!insideWall(box))return;
         
         double leftDist = Math.abs(pos.first-wallBox.first - box[0].second);
         double rightDist = Math.abs(pos.first+wallBox.first - box[0].first);
@@ -187,13 +196,13 @@ public class Projectile {
         return false;
     }
 
-
+    //update code
     public void update() {
-        now = System.nanoTime();
+        now = System.nanoTime(); //time tracker
         totalTime+=(now-last);
         
-
-        switch(ID){
+        switch(ID){ //update differently based on ID
+            //directional melee swings that roughly follow player and dissapear shortly
             case 1->{
                 if(way == Main.player.hDirection){
                     pos.first = Main.player.pos.first + 50*way;
@@ -201,7 +210,6 @@ public class Projectile {
                 pos.second = Main.player.pos.second;
                 if(totalTime > 1000000000 * 0.2){
                     active = false;
-                    // Main.player.shot[1] = false;
                 }
             }
             case 2->{
@@ -209,7 +217,6 @@ public class Projectile {
                 pos.second = Main.player.pos.second-70;
                 if(totalTime > 1000000000 * 0.2){
                     active = false;
-                    // Main.player.shot[1] = false;
                 }
             }
             case 3->{
@@ -217,20 +224,21 @@ public class Projectile {
                 pos.second = Main.player.pos.second+70;
                 if(totalTime > 1000000000 * 0.2){
                     active = false;
-                    // Main.player.shot[1] = false;
                 }
             }
+
+            //ranged horizontal attack that goes in a straight direction and dissapears when it hits a wall
             case 4->{
                 pos.first+=vel.first*way;
                 for(int i = 0 ; i < walls.bounds.length; i++){
-                    if(walls.active[i] && insideWall(walls.bounds[i])>0){
+                    if(walls.active[i] && insideWall(walls.bounds[i])){
                         active = false;
                         return;   
                     }
                 }
             }
 
-
+            //unused default
             default -> {
                 pos.first+=vel.first;
                 pos.second-=vel.second;
@@ -238,7 +246,7 @@ public class Projectile {
                 vel.second+=acc.second;
 
                 for(int i = 0 ; i < walls.bounds.length; i++){
-                    if(walls.active[i] && insideWall(walls.bounds[i])>0){
+                    if(walls.active[i] && insideWall(walls.bounds[i])){
                         active = false;
                         return;   
                     }
@@ -247,6 +255,7 @@ public class Projectile {
             }
         }
 
+        //hitbox/time updates
         last=now;
         box[0].set((int)pos.first-(int)wallBox.first, (int)pos.first+(int)wallBox.first);
         box[1].set((int)pos.second-(int)wallBox.second, (int)pos.second+(int)wallBox.second);
