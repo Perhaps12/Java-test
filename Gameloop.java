@@ -5,14 +5,16 @@ import java.util.*;
 import javax.swing.*;
 
 public class Gameloop extends Canvas implements Runnable, KeyListener {
-    private final JFrame frame;
+    private final JFrame frame; //
+    public static final int WIDTH = 1920, HEIGHT = 1080; //dimensions of frame
     public static boolean running = false;
-    public static final Set<Integer> keys = new HashSet<>();
-    public static final int WIDTH = 1920, HEIGHT = 1080;
+    public static final Set<Integer> keys = new HashSet<>(); //key presses
+    //fps calculations
     private int frames = 0;
     private int fps = 0;
     private long fpsTimer = System.currentTimeMillis();
 
+    //creates the window in the constructor
     public Gameloop() {
         frame = new JFrame("CS CPT");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -32,57 +34,60 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
         createBufferStrategy(2); 
     }
 
+    //starts running the thread
     public void start() {
         running = true;
         new Thread(this).start();
     }
 
+    //main system that processes every tick at about 60fps
     @Override
     public void run() {
+        //frame calculations
         final long frameTime = 1_000_000_000 / 60;
         long lastTime = System.nanoTime();
 
+        //keep gameloop running
         while (running) {
 
             long now = System.nanoTime();
             if (now - lastTime >= frameTime) {
+                //draw/process each element
                 render();
                 update();
-                // System.out.println(Main.proj.size());
-                frames++;
 
+                // more fps calculations
+                frames++;
+                
                 if (System.currentTimeMillis() - fpsTimer >= 1000) {
                     fps = frames;
                     frames = 0;
                     fpsTimer += 1000;
                 }
-
-                lastTime = now;
                 lastTime = now;
             }
 
             try {
-                Thread.sleep(1);
+                Thread.sleep(1);//do this to not fry the cpu
             } catch (Exception e) {}
         }
     }
 
     public void update() {
+        //move all projectiles from multithread safe queue to main arraylist
         while (!Main.queuedProjectiles.isEmpty()) {
             if (Main.proj.size() < Main.max_proj) {
                 Main.proj.add(Main.queuedProjectiles.poll());
             } else {
-                // break; // Avoid going over the limit
+                // Avoid going over the limit
                 Main.queuedProjectiles.poll();
             }
         }
-
-        // for(Projectile p : Main.proj){
-        //     System.out.print(p.ID + " ");
-        // }System.out.println("");
         
+        //update the player
         Main.player.update();
 
+        //update each projectile, remove if inactive
         for(int i = 0 ; i < Main.proj.size(); i++){
             Main.proj.get(i).update();
             if(!Main.proj.get(i).active){
@@ -91,8 +96,7 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
             }
         }
 
-        
-
+        //update each npc, remove if inactive
         for(int i = 0 ; i < Main.npc.size(); i++){
             Main.npc.get(i).update();
             if(!Main.npc.get(i).active){
@@ -102,7 +106,10 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
         }
     }
 
+
+
     private void render() {
+        //necessary for graphics somehow
         BufferStrategy bs = getBufferStrategy();
         Graphics2D g = (Graphics2D) bs.getDrawGraphics();
 
@@ -119,7 +126,7 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
 
         g.setStroke(new BasicStroke(3));
         
-        //wall
+        //walls
         g.setColor(Color.BLACK);
         int I = -1;
         for(pair[] i : walls.bounds){
@@ -128,6 +135,7 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
             g.fillRect(i[0].first, i[1].first, i[0].second-i[0].first, i[1].second-i[1].first);
         }
 
+        //draw all npcs and projectiles + their hitboxes
         g.setColor(Color.RED);   
         for(Projectile p : Main.proj){
             p.draw(g);
@@ -138,29 +146,25 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
             p.draw(g);
             g.drawRect(p.box[0].first, p.box[1].first, p.box[0].second-p.box[0].first, p.box[1].second-p.box[1].first);        
         }
-
         g.setStroke(new BasicStroke(1));
 
+        //render player
         Main.player.draw(g);
 
-        // String keyPress = "| ";
-        // for(int i : keys){
-        //     keyPress+=i + " ";
-        // }
-
+        //add some text on screen, mostly debugging for now
         g.setColor(Color.BLACK);
         g.setFont(new Font("Arial", Font.PLAIN, 24));
         g.drawString("FPS: " + fps, 13, 30);
         g.drawString("Projectiles: " + Main.proj.size(), 13, 60);
         if(Main.npc.size()>0)g.drawString("Damage: " + Main.npc.get(0).damage, 13, 90);
-        // g.drawString("Keys: " + keyPress, 13, 120);
 
-
+        //also necessary for graphics
         g.dispose(); // release Graphics
         bs.show();   // draw to screen
         Toolkit.getDefaultToolkit().sync(); // force render
     }
 
+    //Add/remove pressed keys to a hashset to detect what the user is pressing
     @Override public void keyPressed(KeyEvent e) { keys.add(e.getKeyCode()); }
     @Override public void keyReleased(KeyEvent e) {keys.remove(e.getKeyCode()); }
     @Override public void keyTyped(KeyEvent e) {}

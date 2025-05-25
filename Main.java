@@ -2,25 +2,22 @@ import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Main {
+
     public static ArrayList<Projectile> proj = new ArrayList<>();
     public static ArrayList<Npc> npc = new ArrayList<>();
     public static int max_proj = 1000;
-    public static int ind = 0;
     public static Player player = new Player("/Sprites/O-4.png", 600, 100);
     public static final ConcurrentLinkedQueue<Projectile> queuedProjectiles = new ConcurrentLinkedQueue<>();
 
     public static void main(String[] args) {
+        //create all the walls
         createWall();
-        npc.add(new Npc(740, 380, 0));
-        
+        npc.add(new Npc(740, 380, 0)); //very temporary coin in middle
+        //start running the game
         new Gameloop().start();
     }  
 
-    public static void delay(int n) {
-        try {Thread.sleep(n);} 
-        catch (Exception e) {}
-    }
-
+    //define all collideable walls and stuff
     public static void addWall(int ind, int x1, int x2, int y1, int y2){
         walls.bounds[ind][0].set(x1, x2);
         walls.bounds[ind][1].set(y1, y2);

@@ -1,4 +1,6 @@
 public class operations {
+    //I made this to get the bearing from one point to another for a projectile I deleted long ago
+    //tbh its completely obsolete so idk probably should just delete
     public static double angle(double a, double b, double c, double d){
         
         if(a==c){
