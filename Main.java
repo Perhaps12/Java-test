@@ -7,12 +7,13 @@ public class Main {
     public static ArrayList<Npc> npc = new ArrayList<>();
     public static int max_proj = 1000;
     public static Player player = new Player("/Sprites/O-4.png", 600, 100);
+    public static Npc clone = new Npc(1000, 100, 1);
     public static final ConcurrentLinkedQueue<Projectile> queuedProjectiles = new ConcurrentLinkedQueue<>();
 
     public static void main(String[] args) {
         //create all the walls
         createWall();
-        npc.add(new Npc(740, 380, 0)); //very temporary coin in middle
+        npc.add(new Npc(640, 380, 0)); //very temporary coin in middle
         //start running the game
         new Gameloop().start();
     }  
@@ -60,6 +61,7 @@ public class Main {
 
 
     }
+
 
     
     

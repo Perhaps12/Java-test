@@ -86,6 +86,7 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
         
         //update the player
         Main.player.update();
+        Main.clone.update();
 
         //update each projectile, remove if inactive
         for(int i = 0 ; i < Main.proj.size(); i++){
@@ -146,10 +147,15 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
             p.draw(g);
             g.drawRect(p.box[0].first, p.box[1].first, p.box[0].second-p.box[0].first, p.box[1].second-p.box[1].first);        
         }
-        g.setStroke(new BasicStroke(1));
+        
 
         //render player
+        g.setColor(Color.GREEN);
+        g.drawRect((int)Main.player.pos.first - (int)Main.player.wallBox.first, (int)Main.player.pos.second - (int)Main.player.wallBox.second, 2*(int)Main.player.wallBox.first+1, 2*(int)Main.player.wallBox.second+1);
         Main.player.draw(g);
+        Main.clone.draw(g);
+
+        g.setStroke(new BasicStroke(1));
 
         //add some text on screen, mostly debugging for now
         g.setColor(Color.BLACK);
@@ -157,6 +163,8 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
         g.drawString("FPS: " + fps, 13, 30);
         g.drawString("Projectiles: " + Main.proj.size(), 13, 60);
         if(Main.npc.size()>0)g.drawString("Damage: " + Main.npc.get(0).damage, 13, 90);
+        g.drawString("pogo: " + Main.player.pogo, 13, 120);
+        g.drawString("pogoCool: " + Main.player.pogoCool, 13, 150);
 
         //also necessary for graphics
         g.dispose(); // release Graphics

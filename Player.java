@@ -13,6 +13,8 @@ public class Player{
     //hitboxes
     public final pair hitbox = new pair();
     public final pair wallBox = new pair();
+    public padr box = new padr();
+    public int swap = 1;
     
     private boolean jumped = false; //check if the user has jumped already
 
@@ -64,8 +66,8 @@ public class Player{
         
         double leftDist = Math.abs(pos.first-wallBox.first - box[0].second);
         double rightDist = Math.abs(pos.first+wallBox.first - box[0].first);
-        double upDist = Math.abs(pos.second-wallBox.second - box[1].second) + 10;
-        double downDist = Math.abs(pos.second+wallBox.second - box[1].first) - 10;
+        double upDist = Math.abs(pos.second-wallBox.second - box[1].second) + 10*swap;
+        double downDist = Math.abs(pos.second+wallBox.second - box[1].first) - 10*swap;
         double minDist = Math.min(Math.min(leftDist, rightDist), Math.min(upDist, downDist));
 
         if(minDist==leftDist){
@@ -91,7 +93,9 @@ public class Player{
     public final padr vel2 = new padr(); //both are used for hotizontal movement
     public final padr acc = new padr();
     public final padr acc2 = new padr(); //x axis unused
-    private boolean airJump = false; //double jump unused
+    public boolean airJump = false; //double jump unused
+    public boolean pogo = false;
+    public int pogoCool = 0;
     private boolean wallSlide = false; //wall slide
     //dash
     private int dashCool = 45; 
@@ -154,14 +158,14 @@ public class Player{
         if (Gameloop.keys.contains(KeyEvent.VK_UP)){
             //wall jumps - must be touching wall and causes the player to jump away from the wall
             if(touchingL()&!jumped&&vel2.second<=8){
-                pos.second-=3;
+                pos.second-=3*swap;
                 vel.second=14.5;
                 hDirection2 = -1;
                 vel2.first = 15;
                 jumped = true;
             }
             else if(touchingR()&&!jumped&&vel2.second<=8){
-                pos.second-=3;
+                pos.second-=3*swap;
                 vel.second=14.5;
                 hDirection2 = 1;
                 vel2.first = 15;
@@ -171,12 +175,12 @@ public class Player{
             
             //regular jump - must be touching ground
             else if(coyoteTime>0&&!jumped&&vel2.second<=8){
-                pos.second-=3;
+                pos.second-=3*swap;
                 vel.second = 16;
                 jumped = true;
             }
             else if (airJump&&!jumped&&vel2.second<=8){ //unused double jump
-                pos.second-=3;
+                pos.second-=3*swap;
                 vel.second = 14;
                 jumped = true;
                 airJump=false;
@@ -210,6 +214,14 @@ public class Player{
         if(!(Gameloop.keys.contains(KeyEvent.VK_RIGHT) || Gameloop.keys.contains(KeyEvent.VK_LEFT))){
             acc.first=-1000;
             acc2.second = 0;
+        }
+
+        //pogo on downwards strike
+        if (pogo){ 
+            pos.second-=3*swap;
+            vel.second = 22;
+            pogo=false;
+            pogoCool = 20;
         }
 
         //horizontal movement acceleration
@@ -259,7 +271,7 @@ public class Player{
         vel.second = Math.min(100, vel.second); //vertical velocity cap (probably unecessary but just in case)
 
         //vertical movement position
-        pos.second-=vel.second;
+        pos.second-=vel.second*swap;
 
         //collision
         int ind = -1;
@@ -278,17 +290,32 @@ public class Player{
 
         dashCool = Math.max(dashCool-1, 0);
 
+        pogoCool = Math.max(pogoCool-1, 0);
+
         //debug
         // System.out.println(vel.first + " " + acc.first);
         // System.out.println(image.getHeight(this) + " " + image.getWidth(this));
         // System.out.println(touchingL());
         // System.out.println(vel.second);
         // System.out.println("0 -4");
+
+
+        box.first = pos.first-wallBox.first;
+        box.second=pos.first-wallBox.second;
     }
 
 
     //same method as in NPC.java
     public boolean touchingU(){
+        if(swap==-1){
+            for(pair[] box : walls.bounds){
+                if(  (pos.second-wallBox.second >= box[1].second && pos.second-wallBox.second <= box[1].second+2 )&& !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first)   ){
+                    return true;
+                }
+            }
+            return false;
+        }
+
         for(pair[] box : walls.bounds){
             if(  (pos.second+wallBox.second <= box[1].first && pos.second+wallBox.second >= box[1].first-2 )&& !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first)   ){
                 return true;
@@ -318,6 +345,15 @@ public class Player{
     }
 
     public boolean touchingD(){
+        if(swap==-1){
+            for(pair[] box : walls.bounds){
+                if(  (pos.second+wallBox.second <= box[1].first && pos.second+wallBox.second >= box[1].first-2 )&& !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first)   ){
+                    return true;
+                }
+            }
+            return false;
+        }
+        
         for(pair[] box : walls.bounds){
             if(  (pos.second-wallBox.second >= box[1].second && pos.second-wallBox.second <= box[1].second+2 )&& !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first)   ){
                 return true;
@@ -370,6 +406,24 @@ public class Player{
         if(!Gameloop.keys.contains(KeyEvent.VK_Z)){
             shot[1] = false;
         }
+
+
+        //swap
+        if(Gameloop.keys.contains(KeyEvent.VK_S) && !shot[2]){
+            padr temp = new padr();
+            temp.set(Main.clone.pos.first, Main.clone.pos.second);
+            Main.clone.pos.set(pos.first, pos.second);
+            pos.first=temp.first;
+            pos.second=temp.second;
+            shot[2] = true;
+            swap*=-1;
+            System.out.println(temp.first + " " + temp.second + " | " + pos.first + " " + pos.second + " | " + Main.clone.pos.first + " " + Main.clone.pos.second);
+        }
+        if(!Gameloop.keys.contains(KeyEvent.VK_S)){
+            shot[2] = false; 
+        }
+
+
 
 
     }

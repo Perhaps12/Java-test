@@ -7,7 +7,7 @@ public class Npc {
     public boolean active = true; //false if want to delete the npc
     private BufferedImage image;
     private int ID; //keep track of which NPC it is
-    private final padr pos = new padr(); //position is centered in the middle of an image
+    public final padr pos = new padr(); //position is centered in the middle of an image
 
     //hit/image boxes (width, height)
     private final pair hitbox; //hit detection box
@@ -38,6 +38,12 @@ public class Npc {
         //set hitbox/other stats based on the type of ID
         switch (npcID) {
             //coin npc
+            case 1 ->{
+                try{image = ImageIO.read(getClass().getResource("/Sprites/friendlinessPellet.png"));}
+                catch(IOException | IllegalArgumentException e){}
+                hitbox.set(25, 32);
+                wallBox.set(15, 15);
+            }
             default -> {
                 try{image = ImageIO.read(getClass().getResource("/Sprites/thec oin.png"));}
                 catch(IOException | IllegalArgumentException e){}
@@ -173,6 +179,10 @@ public class Npc {
         
 
         switch(ID){
+            case 1->{
+                pos.first = Main.player.pos.first;
+                pos.second = 790-Main.player.pos.second;
+            }
             //coin npc
             default -> {
                 //npc doesn't move at the moment

@@ -8,7 +8,7 @@ public class Projectile {
     public boolean active = true;
     private BufferedImage image;
     public int ID;
-    private final padr pos = new padr();
+    public padr pos = new padr();
     private final pair hitbox;
     private final padr wallBox;
     private final padr vel;
@@ -62,6 +62,14 @@ public class Projectile {
                 wallBox.set(35, 28);
                 hitbox.set(15, 15);
                 way = Main.player.hDirection;
+            }
+
+            //player clone
+            case 5 -> {
+                try{image = ImageIO.read(getClass().getResource("/Sprites/friendlinessPellet.png"));}
+                catch(IOException | IllegalArgumentException e){}
+                hitbox.set(25, 32);
+                wallBox.set(25, 37);
             }
 
             //unused default
@@ -214,16 +222,21 @@ public class Projectile {
             }
             case 2->{
                 pos.first = Main.player.pos.first;
-                pos.second = Main.player.pos.second-70;
+                pos.second = Main.player.pos.second-70*Main.player.swap;
                 if(totalTime > 1000000000 * 0.2){
                     active = false;
                 }
             }
-            case 3->{
+            case 3->{ //downwards
                 pos.first = Main.player.pos.first;
-                pos.second = Main.player.pos.second+70;
+                pos.second = Main.player.pos.second+70*Main.player.swap;
                 if(totalTime > 1000000000 * 0.2){
                     active = false;
+                }
+                for(Npc n : Main.npc){
+                    if(insideWall(n.box) && Main.player.pogoCool==0){
+                        Main.player.pogo = true;
+                    }
                 }
             }
 
@@ -236,6 +249,11 @@ public class Projectile {
                         return;   
                     }
                 }
+            }
+
+            case 5-> {
+                pos.first = Main.player.pos.first;
+                pos.second = 790-Main.player.pos.second;
             }
 
             //unused default
