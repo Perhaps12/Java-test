@@ -1,452 +1,523 @@
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.image.*;
-import java.io.*;
-import javax.imageio.*;
 
-
-
-public class Player{
-
-    private BufferedImage image;
-    public final padr pos = new padr(); //position centered
-    //hitboxes
-    public final pair hitbox = new pair();
-    public final pair wallBox = new pair();
-    public padr box = new padr();
-    public int swap = 1;
-    
-    private boolean jumped = false; //check if the user has jumped already
-
-    public Player(String imagePath, int centerX, int centerY) {
-
-        this.pos.first = centerX;
-        this.pos.second = centerY;
-
-        try {this.image = ImageIO.read(getClass().getResourceAsStream(imagePath));} 
-        catch (IOException e) {}
-
-        hitbox.set(10, 22);
-        wallBox.set(25, 37);
-        //set default acceleration downwards
-        acc.second = -0.9;
-        
-    }
-
-    //display ===========================================================================================================
-    
-    //same methods as in NPC.java
-    public void draw(Graphics g) {
-        if (image != null) {
-            g.drawImage(image, (int)pos.first-wallBox.first, (int)pos.second-wallBox.second, null);
-        }
-    }
-    
-    //movement ===========================================================================================================
-
-    //same methods as in NPC.java
-    private boolean insideWall(pair[] box){
-
-        if(box[0].first <= pos.first-wallBox.first && pos.first-wallBox.first <= box[0].second
-            &&!(pos.second-wallBox.second >= box[1].second || pos.second+wallBox.second <= box[1].first))return true;
-
-        if(box[0].first <= pos.first+wallBox.first && pos.first+wallBox.first <= box[0].second
-            &&!(pos.second-wallBox.second >= box[1].second || pos.second+wallBox.second <= box[1].first))return true;
-
-        if(box[1].first <= pos.second-wallBox.second && pos.second-wallBox.second <= box[1].second
-            &&!(pos.first-wallBox.first >= box[0].second || pos.first+wallBox.first <= box[0].first))return true;
-
-        return box[1].first <= pos.second+wallBox.second && pos.second+wallBox.second <= box[1].second
-                && !(pos.first-wallBox.first >= box[0].second || pos.first+wallBox.first <= box[0].first);
-    }
-
-    private void collideWall(pair[] box){
-        
-        if(!insideWall(box))return;
-        
-        double leftDist = Math.abs(pos.first-wallBox.first - box[0].second);
-        double rightDist = Math.abs(pos.first+wallBox.first - box[0].first);
-        double upDist = Math.abs(pos.second-wallBox.second - box[1].second) + 10*swap;
-        double downDist = Math.abs(pos.second+wallBox.second - box[1].first) - 10*swap;
-        double minDist = Math.min(Math.min(leftDist, rightDist), Math.min(upDist, downDist));
-
-        if(minDist==leftDist){
-            pos.first = box[0].second+wallBox.first;
-        }
-        if(minDist==rightDist){
-            pos.first = box[0].first - wallBox.first;
-        }
-        if(minDist==upDist){
-            pos.second = box[1].second+wallBox.second;
-        }
-        if(minDist==downDist){
-            pos.second = box[1].first - wallBox.second-1;
-        }
-
-    }
-
-    //direction user is facing
-    public int hDirection = 1; //primary direction
-    public int hDirection2 = 1; //used to adjust velocity in specific scenarios seperate to where player is facing (ex walljump)
-    //accelerations + velocities
-    public final padr vel = new padr();
-    public final padr vel2 = new padr(); //both are used for hotizontal movement
-    public final padr acc = new padr();
-    public final padr acc2 = new padr(); //x axis unused
-    public boolean airJump = false; //double jump unused
-    public boolean pogo = false;
-    public int pogoCool = 0;
-    private boolean wallSlide = false; //wall slide
-    //dash
-    private int dashCool = 45; 
-    //coyote time essentially allows the user to jump for a few frames after leaving the ground, improving the user experience in case they mistime slightly
+/**
+ * Player class representing the user-controlled character
+ */
+public class Player extends Entity {
+    // Player state
+    private boolean jumped = false;
+    private boolean airJump = false;
+    private boolean pogo = false;
+    private int pogoCool = 0;
+    private boolean wallSlide = false;
     private int coyoteTime = 0;
+    private int swap = 1; // For gravity swap mechanic
 
-    //update player logic
+    // Direction user is facing
+    private int hDirection = 1; // primary direction
+    private int hDirection2 = 1; // secondary direction (for wall jumps)
+
+    // Movement vectors
+    private Vector2D velocity2 = new Vector2D(); // Secondary velocity (wall jump, dash)
+
+    // Dash mechanics
+    private int dashCool = 45;
+
+    // Fall distance tracking for impact shake effects
+    private double fallStartY = 0;
+    private boolean wasFalling = false;
+    private static final double HARD_LANDING_THRESHOLD = 220; // pixels fallen for hard landing shake
+
+    // Combat
+    private int[] cooldown = new int[99]; // Cooldowns for attacks
+    private boolean[] shot = new boolean[99]; // Track button presses for attacks
+
+    /**
+     * Create a new player with position and sprite
+     */
+    public Player(String spritePath, double centerX, double centerY) {
+        super(centerX, centerY, 50, 74, spritePath);
+
+        // Set default acceleration (gravity)
+        acceleration.setY(0.9);
+    }
+
+    @Override
     public void update() {
-        shoot();//check if player attacks at all
-        
-        if(touchingL()||touchingR()||touchingU()){ //double jump disabled for now
-            // airJump = true;
+        // Process attacks
+        processAttacks();
+
+        // Process movement
+        processMovement();
+
+        // Apply physics with velocity system
+        applyPlayerPhysics();
+
+        // Check collision with walls
+        handleWallCollisions();
+
+        // Update cooldowns
+        updateCooldowns();
+    }
+
+    @Override
+    public void draw(Graphics g) {
+        if (sprite != null) {
+            g.drawImage(sprite, (int) (x - width / 2), (int) (y - height / 2), null);
         }
-        if(touchingU()){ //reset downwards velocity/coyote time when touching the ground
-            vel.second = Math.max(-0.2, vel.second);
+    }
+
+    /**
+     * Handle player movement based on keyboard input
+     */
+    private void processMovement() {
+        Camera camera = Camera.getInstance();
+        camera.setFollowSpeed(0.075);
+
+        // Reset acceleration
+        acceleration.setX(0); // Check if standing on ground
+        boolean onGround = isTouchingGround();
+        if (onGround) {
+            // Check for hard landing shake effect - Y increases downward, so y > fallStartY
+            // when falling
+            if (wasFalling && Math.abs(y - fallStartY) > HARD_LANDING_THRESHOLD) {
+                double fallDistance = Math.abs(y - fallStartY);
+                double shakeIntensity = Math.min(25, fallDistance / 8); // Scale intensity with fall distance
+                int shakeDuration = (int) Math.min(10, fallDistance / 6); // Scale duration with fall distance, cap at
+                                                                          // 15 frames
+
+                // Only trigger if it's a significant landing or no current shake
+                if (camera.shouldOverrideShake(shakeIntensity)) {
+                    camera.shake(shakeIntensity, shakeDuration, Camera.ShakeType.CIRCULAR);
+                }
+            }
+            velocity.setY(Math.max(-0.2, velocity.getY()));
             coyoteTime = 5;
-        }
-        
-        //left/right movement
-        if (Gameloop.keys.contains(KeyEvent.VK_LEFT)){
-            //swap direction slowdown
-            if(hDirection==1){
-                vel.first = 0;
-                acc.first = -2;
+            wasFalling = false; // Reset falling state
+            fallStartY = y; // Reset fall start position when on ground
+        } else {
+            // Track falling state for hard landing detection
+            if (!wasFalling && velocity.getY() < -5) { // Started falling with significant downward velocity
+                wasFalling = true;
+                fallStartY = y;
             }
-            if(vel2.second<=2)hDirection = -1;
-            //wall slide
-            if(touchingR()){
-                acc2.second =-0.05;
-                wallSlide = true;
-            }else{
-                acc2.second = 0;
-                wallSlide = false;
-            }
-            //movement
-            acc.first+=1.2;
-            // released.first = 0;
-        }
-        if (Gameloop.keys.contains(KeyEvent.VK_RIGHT)){
-            //swap direction slowdown
-            if(hDirection==-1){
-                vel.first = 0;
-                acc.first = -2;
-            }
-            if(vel2.second<=2)hDirection = 1;
-            //wall slide
-            if(touchingL()){
-                acc2.second = -0.05;
-                wallSlide = true;
-            }else{
-                acc2.second = 0;
-                wallSlide = false;
-            }
-            //movement
-            acc.first+=1.2;
-            // released.second = 0;
         }
 
-        //jumping logic
-        if (Gameloop.keys.contains(KeyEvent.VK_UP)){
-            //wall jumps - must be touching wall and causes the player to jump away from the wall
-            if(touchingL()&!jumped&&vel2.second<=8){
-                pos.second-=3*swap;
-                vel.second=14.5;
+        // Left/Right movement
+        if (GameEngine.isKeyPressed(KeyEvent.VK_LEFT)) {
+            // Direction change handling
+            if (hDirection == 1) {
+                velocity.setX(0);
+                acceleration.setX(-2);
+            }
+            if (velocity2.getY() <= 2) {
+                hDirection = -1;
+            }
+
+            // Wall slide
+            if (isTouchingRightWall()) {
+                acceleration.setY(-0.05);
+                wallSlide = true;
+            } else {
+                acceleration.setY(0);
+                wallSlide = false;
+            }
+
+            // Movement
+            acceleration.setX(acceleration.getX() + 1.2);
+        }
+
+        if (GameEngine.isKeyPressed(KeyEvent.VK_RIGHT)) {
+            // Direction change handling
+            if (hDirection == -1) {
+                velocity.setX(0);
+                acceleration.setX(-2);
+            }
+            if (velocity2.getY() <= 2) {
+                hDirection = 1;
+            }
+
+            // Wall slide
+            if (isTouchingLeftWall()) {
+                acceleration.setY(-0.05);
+                wallSlide = true;
+            } else {
+                acceleration.setY(0);
+                wallSlide = false;
+            }
+
+            // Movement
+            acceleration.setX(acceleration.getX() + 1.2);
+        }
+
+        // Jumping logic
+        if (GameEngine.isKeyPressed(KeyEvent.VK_UP)) {
+            // Wall jumps
+            if (isTouchingLeftWall() && !jumped && velocity2.getY() <= 8) {
+                y -= 3 * swap;
+                velocity.setY(14.5);
                 hDirection2 = -1;
-                vel2.first = 15;
+                velocity2.setX(15);
                 jumped = true;
-            }
-            else if(touchingR()&&!jumped&&vel2.second<=8){
-                pos.second-=3*swap;
-                vel.second=14.5;
+            } else if (isTouchingRightWall() && !jumped && velocity2.getY() <= 8) {
+                y -= 3 * swap;
+                velocity.setY(14.5);
                 hDirection2 = 1;
-                vel2.first = 15;
+                velocity2.setX(15);
                 jumped = true;
+            }
+            // Regular jump - must be touching ground or in coyote time
+            else if (coyoteTime > 0 && !jumped && velocity2.getY() <= 8) {
+                y -= 3 * swap;
+                velocity.setY(16);
+                jumped = true;
+            }
+            // Double jump
+            else if (airJump && !jumped && velocity2.getY() <= 8) {
+                y -= 3 * swap;
+                velocity.setY(14);
+                jumped = true;
+                airJump = false;
+            }
 
+            // Hold up to jump higher
+            if (velocity.getY() >= 2) {
+                acceleration.setY(-0.7);
+            } else {
+                acceleration.setY(-1.2);
             }
-            
-            //regular jump - must be touching ground
-            else if(coyoteTime>0&&!jumped&&vel2.second<=8){
-                pos.second-=3*swap;
-                vel.second = 16;
-                jumped = true;
-            }
-            else if (airJump&&!jumped&&vel2.second<=8){ //unused double jump
-                pos.second-=3*swap;
-                vel.second = 14;
-                jumped = true;
-                airJump=false;
-            }
-            //hold up to jump higher
-            if(vel.second>=2)acc.second=-0.7;
-            else acc.second=-1.2;
-        }
-        else{
-            //make sure continuous holding of jump key doesnt keep jumping
+        } else {
+            // Reset jump state when key is released
             jumped = false;
         }
-        //accelerate downwards faster
-        if (Gameloop.keys.contains(KeyEvent.VK_DOWN)) acc.second=-1.6;
 
-        //dash
-        if (Gameloop.keys.contains(KeyEvent.VK_C)){
-            if(dashCool==0){
-                vel2.second = 22; //also prevents a lot of other movement when the dash is active so dash is uninterrupted
-                vel.second = -2;
+        // Fast fall
+        if (GameEngine.isKeyPressed(KeyEvent.VK_DOWN)) {
+            acceleration.setY(-1.6);
+        }
+
+        // Dash
+        if (GameEngine.isKeyPressed(KeyEvent.VK_C)) {
+            if (dashCool == 0) {
+                velocity2.setY(22);
+                velocity.setY(-2);
                 dashCool = 45;
+                // Add small shake effect when starting dash
+                camera.shake(10, 6, Camera.ShakeType.RANDOM);
             }
         }
 
-        //disable wallslide if not holding keys
-        if(!Gameloop.keys.contains(KeyEvent.VK_RIGHT) && !Gameloop.keys.contains(KeyEvent.VK_LEFT)){
+        // Disable wallslide if not holding direction keys
+        if (!GameEngine.isKeyPressed(KeyEvent.VK_RIGHT) && !GameEngine.isKeyPressed(KeyEvent.VK_LEFT)) {
             wallSlide = false;
         }
 
-        //stop if not moving
-        if(!(Gameloop.keys.contains(KeyEvent.VK_RIGHT) || Gameloop.keys.contains(KeyEvent.VK_LEFT))){
-            acc.first=-1000;
-            acc2.second = 0;
+        // Stop if not moving
+        if (!(GameEngine.isKeyPressed(KeyEvent.VK_RIGHT) || GameEngine.isKeyPressed(KeyEvent.VK_LEFT))) {
+            acceleration.setX(-1000);
+            // Reset wall slide acceleration when not moving horizontally
+            // acc2.second = 0; (handled in velocity calculation)
         }
 
-        //pogo on downwards strike
-        if (pogo){ 
-            pos.second-=3*swap;
-            vel.second = 22;
-            pogo=false;
+        // Pogo on downwards strike
+        if (pogo) {
+            y -= 3 * swap;
+            velocity.setY(22);
+            pogo = false;
             pogoCool = 20;
+            camera.shake(5, 15, Camera.ShakeType.VERTICAL);
         }
-
-        //horizontal movement acceleration
-        acc.first = Math.max(-4, acc.first);
-        acc.first = Math.min(4, acc.first); //acceleration cap
-
-        //horizontal movement velocity
-        vel.first+=acc.first;
-        vel.first = Math.max(0, vel.first);
-        vel.first = Math.min(7, vel.first); //velocity cap
-        //wall jump velocity deacceleration
-        vel2.first-=1.5;
-        vel2.first=Math.max(0, vel2.first);
-        //dash velocity deacceleration
-        vel2.second-=2;
-        vel2.second=Math.max(0, vel2.second);
-            
-        //slightly adjust speed after a walljump
-        if(vel2.first+vel.first >= 3 && hDirection!=hDirection2 && vel2.first>0){
-            vel.first = Math.max(3-vel2.first, 0);
-        }
-        if(vel2.first+vel.first >= 7 && hDirection==hDirection2){
-            vel.first = Math.max(7-vel2.first, 0);
-        }
-
-        //horizontal movement position
-        pos.first+=hDirection*(vel.first+vel2.second)+hDirection2*vel2.first;
-
-        //reset gravity to normal
-        if(!(Gameloop.keys.contains(KeyEvent.VK_DOWN) || Gameloop.keys.contains(KeyEvent.VK_UP)))acc.second=-1.2;
-
-        
-        //various vertical velocity calculations
-        //tbh i dont remember what this does but its probably important
-        if(vel2.second > 3){
-            vel.second+=2*acc2.second;
-        }
-        else if((!wallSlide || vel.second>-2))vel.second+=acc.second;
-
-        //wallslide velocity/acceleration
-        else{
-            vel.second+=acc2.second;
-            vel.second = Math.max(-4, vel.second);
-        }
-        if(touchingD())vel.second = -2; //stop velocity when hit ceiling
-        vel.second = Math.max(-100, vel.second);
-        vel.second = Math.min(100, vel.second); //vertical velocity cap (probably unecessary but just in case)
-
-        //vertical movement position
-        pos.second-=vel.second*swap;
-
-        //collision
-        int ind = -1;
-        for(pair[] box : walls.bounds){
-            ind++;
-            if(!walls.active[ind])continue;
-            collideWall(box);
-        }
-
-        //adjust various cooldowns
-        coyoteTime = Math.max(coyoteTime-1, 0);
-
-        for(int i = 0 ; i < cooldown.length; i++){
-            cooldown[i] = Math.max(0, cooldown[i]-1);
-        }
-
-        dashCool = Math.max(dashCool-1, 0);
-
-        pogoCool = Math.max(pogoCool-1, 0);
-
-        //debug
-        // System.out.println(vel.first + " " + acc.first);
-        // System.out.println(image.getHeight(this) + " " + image.getWidth(this));
-        // System.out.println(touchingL());
-        // System.out.println(vel.second);
-        // System.out.println("0 -4");
-
-
-        box.first = pos.first-wallBox.first;
-        box.second=pos.first-wallBox.second;
     }
 
+    /**
+     * Apply physics with velocity/acceleration system
+     */
+    private void applyPlayerPhysics() {
+        // Cap acceleration
+        acceleration.setX(Math.max(-4, acceleration.getX()));
+        acceleration.setX(Math.min(4, acceleration.getX()));
 
-    //same method as in NPC.java
-    public boolean touchingU(){
-        if(swap==-1){
-            for(pair[] box : walls.bounds){
-                if(  (pos.second-wallBox.second >= box[1].second && pos.second-wallBox.second <= box[1].second+2 )&& !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first)   ){
-                    return true;
+        // Apply acceleration to velocity
+        velocity.add(acceleration.getX(), 0);
+
+        // Cap velocity
+        velocity.setX(Math.max(0, velocity.getX()));
+        velocity.setX(Math.min(7, velocity.getX()));
+
+        // Wall jump velocity deceleration
+        velocity2.setX(velocity2.getX() - 1.5);
+        velocity2.setX(Math.max(0, velocity2.getX()));
+
+        // Dash velocity deceleration - legacy: vel2.second
+        velocity2.setY(velocity2.getY() - 2);
+        velocity2.setY(Math.max(0, velocity2.getY()));
+
+        // Speed adjustment after wall jump
+        if (velocity2.getX() + velocity.getX() >= 3 && hDirection != hDirection2 && velocity2.getX() > 0) {
+            velocity.setX(Math.max(3 - velocity2.getX(), 0));
+        }
+        if (velocity2.getX() + velocity.getX() >= 7 && hDirection == hDirection2) {
+            velocity.setX(Math.max(7 - velocity2.getX(), 0));
+        }
+
+        // Movement based on velocities - legacy:
+        // pos.first+=hDirection*(vel.first+vel2.second)+hDirection2*vel2.first;
+        x += hDirection * (velocity.getX() + velocity2.getY()) + hDirection2 * velocity2.getX();
+
+        // Reset gravity to normal if no special keys are pressed
+        if (!(GameEngine.isKeyPressed(KeyEvent.VK_DOWN) || GameEngine.isKeyPressed(KeyEvent.VK_UP))) {
+            acceleration.setY(-1.2);
+        }
+
+        // Various vertical velocity calculations - matching legacy exactly
+        if (velocity2.getY() > 3) {
+            // When dash Y velocity is active, use wall slide acceleration (acc2.second)
+            double wallSlideAcc = wallSlide ? -0.05 : 0;
+            velocity.setY(velocity.getY() + 2 * wallSlideAcc);
+        } else if (!wallSlide || velocity.getY() > -2) {
+            velocity.setY(velocity.getY() + acceleration.getY());
+        } else {
+            // Wall slide physics - use wall slide acceleration (acc2.second)
+            double wallSlideAcc = -0.05;
+            velocity.setY(velocity.getY() + wallSlideAcc);
+            velocity.setY(Math.max(-4, velocity.getY()));
+        }
+
+        // Stop velocity when hitting ceiling
+        if (isTouchingCeiling()) {
+            velocity.setY(-2);
+        }
+
+        // Cap vertical velocity
+        velocity.setY(Math.max(-100, velocity.getY()));
+        velocity.setY(Math.min(100, velocity.getY()));
+
+        // Apply vertical movement
+        y -= velocity.getY() * swap;
+    }
+
+    /**
+     * Handle collisions with walls
+     */
+    private void handleWallCollisions() {
+        Camera camera = Camera.getInstance();
+
+        for (Wall wall : GameEngine.getWalls()) {
+            if (isCollidingWithWall(wall)) {
+                // Check if player is dashing (has significant dash velocity) and hits a wall
+                boolean isDashing = velocity2.getY() > 18; // Much higher threshold for dash detection
+                boolean isMovingFast = Math.abs(velocity2.getX()) > 12; // Only wall jump velocity triggers this now
+
+                if (isDashing || isMovingFast) {
+                    // Calculate impact shake based on velocity
+                    double totalVelocity = Math.sqrt(velocity.getX() * velocity.getX()
+                            + velocity2.getX() * velocity2.getX() + velocity2.getY() * velocity2.getY());
+                    double shakeIntensity = Math.min(15, totalVelocity / 2); // Reduced intensity scaling
+                    int shakeDuration = (int) Math.min(12, totalVelocity); // Reduced duration scaling
+
+                    // Only trigger shake if it's significant enough or no current shake
+                    if (camera.shouldOverrideShake(shakeIntensity)) {
+                        camera.shake(shakeIntensity, shakeDuration, Camera.ShakeType.RANDOM);
+                    }
                 }
-            }
-            return false;
-        }
 
-        for(pair[] box : walls.bounds){
-            if(  (pos.second+wallBox.second <= box[1].first && pos.second+wallBox.second >= box[1].first-2 )&& !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first)   ){
-                return true;
+                handleWallCollision(wall);
             }
         }
-        return false;
     }
 
-    public boolean touchingR(){
-        for(pair[] box : walls.bounds){
-            if(box[0].second <= pos.first-wallBox.first && pos.first-wallBox.first<=box[0].second+2
-            &&!(pos.second-wallBox.second > box[1].second || pos.second+wallBox.second < box[1].first)){
-                return true;
-            }
-        }
-        return false;
-    }
+    /**
+     * Process player attacks and weapon use
+     */
+    private void processAttacks() { // Ranged attack
+        if (GameEngine.isKeyPressed(KeyEvent.VK_X) && !shot[0] && cooldown[0] == 0) {
+            shot[0] = true;
 
-    public boolean touchingL(){
-        for(pair[] box : walls.bounds){
-            if(box[0].first >= pos.first+wallBox.first && pos.first+wallBox.first>=box[0].first-2
-            &&!(pos.second-wallBox.second > box[1].second || pos.second+wallBox.second < box[1].first)){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean touchingD(){
-        if(swap==-1){
-            for(pair[] box : walls.bounds){
-                if(  (pos.second+wallBox.second <= box[1].first && pos.second+wallBox.second >= box[1].first-2 )&& !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first)   ){
-                    return true;
-                }
-            }
-            return false;
-        }
-        
-        for(pair[] box : walls.bounds){
-            if(  (pos.second-wallBox.second >= box[1].second && pos.second-wallBox.second <= box[1].second+2 )&& !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first)   ){
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    // ===========================================================================================================
-    
-    public int cooldown[] = new int[99];//store cooldowns for each projectile type
-    public boolean shot[] = new boolean[99]; //used to prevent autofire when holding down buttons
-    public void shoot(){
-
-        //horizontal ranged attack
-        if(Gameloop.keys.contains(KeyEvent.VK_X) && !shot[0] && cooldown[0]==0){
-            shot[0]=true;
-            //launches player back a bit when fired
+            // Recoil
             hDirection2 = -hDirection;
-            vel2.first = 10;
-            //reset velocities
-            vel.first = 0;
-            vel.second = 3;
+            velocity2.setX(10);
+            velocity.setX(0);
+            velocity.setY(3);
 
-            padr velocity = new padr();
-            velocity.set(40, 0); //set initial projectile velocity
-            Main.proj.add(new Projectile(pos.first, pos.second, 4, velocity));
+            // Create projectile
+            Vector2D projectileVelocity = new Vector2D(100, 0);
+            GameEngine.addProjectile(new Projectile(x, y, 4, projectileVelocity));
             cooldown[0] = 50;
 
+            // Add subtle shake effect for shooting
+            Camera camera = Camera.getInstance();
+            camera.shake(2, 5, Camera.ShakeType.HORIZONTAL);
         }
-        if(!Gameloop.keys.contains(KeyEvent.VK_X)){
-            shot[0] = false; //detects when letting go of the button to prevent holding to attack
+        if (!GameEngine.isKeyPressed(KeyEvent.VK_X)) {
+            shot[0] = false;
         }
 
+        // Melee attacks
+        if (GameEngine.isKeyPressed(KeyEvent.VK_Z) && !shot[1] && cooldown[1] == 0) {
+            shot[1] = true;
 
-        //melee swings
-        if(Gameloop.keys.contains(KeyEvent.VK_Z) && !shot[1] && cooldown[1] == 0 ){
-            shot[1]=true;
-            // pos.first+=-hDirection*35;
-            // vel.first = 0;
-            // System.out.println("hey");
-            padr velocity = new padr();
-            velocity.set(0, 0);
-            int ID = 1; //default to left/right attack
-            if(Gameloop.keys.contains(KeyEvent.VK_SPACE))ID = 2; //if user is holiding space, upwards attack
-            if(Gameloop.keys.contains(KeyEvent.VK_DOWN) && !touchingU()) ID=3; //if user is holding down and is not touching any floor, downwards attack
-            Main.proj.add(new Projectile(pos.first, pos.second, ID, velocity));
-            cooldown[1] = 25; 
+            Vector2D attackVelocity = new Vector2D(0, 0);
+            int attackID = 1; // Default horizontal attack
+
+            if (GameEngine.isKeyPressed(KeyEvent.VK_SPACE)) {
+                attackID = 2; // Upward attack
+            } else if (GameEngine.isKeyPressed(KeyEvent.VK_DOWN) && !isTouchingGround()) {
+                attackID = 3; // Downward attack
+            }
+
+            GameEngine.addProjectile(new Projectile(x, y, attackID, attackVelocity));
+            cooldown[1] = 25;
         }
-        if(!Gameloop.keys.contains(KeyEvent.VK_Z)){
+        if (!GameEngine.isKeyPressed(KeyEvent.VK_Z)) {
             shot[1] = false;
+        } // Character swap
+        if (GameEngine.isKeyPressed(KeyEvent.VK_S) && !shot[2]) {
+            // Find clone NPC
+            Npc clone = null;
+            for (Npc npc : GameEngine.getNpcs()) {
+                if (npc.getID() == 1) {
+                    clone = npc;
+                    break;
+                }
+            }
+
+            if (clone != null) {
+                // Swap positions
+                double tempX = clone.getX();
+                double tempY = clone.getY();
+                clone.setPosition(x, y);
+                x = tempX;
+                y = tempY;
+                shot[2] = true;
+                swap *= -1;
+
+                // Add shake effect for character swap
+                Camera camera = Camera.getInstance();
+                camera.shake(8, 12, Camera.ShakeType.CIRCULAR);
+            }
         }
-
-
-        //swap
-        if(Gameloop.keys.contains(KeyEvent.VK_S) && !shot[2]){
-            padr temp = new padr();
-            temp.set(Main.clone.pos.first, Main.clone.pos.second);
-            Main.clone.pos.set(pos.first, pos.second);
-            pos.first=temp.first;
-            pos.second=temp.second;
-            shot[2] = true;
-            swap*=-1;
-            System.out.println(temp.first + " " + temp.second + " | " + pos.first + " " + pos.second + " | " + Main.clone.pos.first + " " + Main.clone.pos.second);
+        if (!GameEngine.isKeyPressed(KeyEvent.VK_S)) {
+            shot[2] = false;
         }
-        if(!Gameloop.keys.contains(KeyEvent.VK_S)){
-            shot[2] = false; 
-        }
-
-
-
-
     }
 
+    /**
+     * Update all cooldown timers
+     */
+    private void updateCooldowns() {
+        coyoteTime = Math.max(coyoteTime - 1, 0);
 
-    //code to summon multiple projectiles at once using threads
-        // new Thread(() -> {
-        //         for (int i = 0; i < 10; i++) {
-        //             if(Main.proj.size()>Main.max_proj)break;
-                    
-        //             padr velocity = new padr();
-        //             double tempAngle = (Math.random()*0.3)+0.9;
-        //             if(Main.proj.size()>Main.max_proj)return;
-        //             velocity.set(hDirection * (20 * Math.cos(tempAngle) + vel.first), Math.sin(tempAngle) *20 + vel.second/2);
-        //             Projectile p = new Projectile(pos.first, pos.second,0,  velocity);
-        //             Main.queuedProjectiles.add(p);
-        //             try {
-        //                 Thread.sleep(1); // small delay to spread out load
-        //             } catch (InterruptedException ignored) {}
-        //         }
-        //     }).start();
-    //===========================================================================================================
+        for (int i = 0; i < cooldown.length; i++) {
+            cooldown[i] = Math.max(0, cooldown[i] - 1);
+        }
 
+        dashCool = Math.max(dashCool - 1, 0);
+        pogoCool = Math.max(pogoCool - 1, 0);
+    }
 
+    /**
+     * Check if player is touching the ground
+     */
+    public boolean isTouchingGround() {
+        for (Wall wall : GameEngine.getWalls()) {
+            double playerBottom, wallSurface;
 
+            if (swap == 1) {
+                // Normal gravity - check bottom of player against top of wall
+                playerBottom = y + height / 2;
+                wallSurface = wall.getY();
+            } else {
+                // Inverted gravity - check top of player against bottom of wall
+                playerBottom = y - height / 2;
+                wallSurface = wall.getY() + wall.getHeight();
+            }
+
+            // Check if player is touching the surface
+            if (Math.abs(playerBottom - wallSurface) < 2 &&
+                    x + width / 2 > wall.getX() &&
+                    x - width / 2 < wall.getX() + wall.getWidth()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if player is touching a ceiling
+     */
+    public boolean isTouchingCeiling() {
+        for (Wall wall : GameEngine.getWalls()) {
+            double playerTop, wallSurface;
+
+            if (swap == 1) {
+                // Normal gravity - check top of player against bottom of wall
+                playerTop = y - height / 2;
+                wallSurface = wall.getY() + wall.getHeight();
+            } else {
+                // Inverted gravity - check bottom of player against top of wall
+                playerTop = y + height / 2;
+                wallSurface = wall.getY();
+            }
+
+            // Check if player is touching the surface
+            if (Math.abs(playerTop - wallSurface) < 2 &&
+                    x + width / 2 > wall.getX() &&
+                    x - width / 2 < wall.getX() + wall.getWidth()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if player is touching a wall on the right side
+     */
+    public boolean isTouchingRightWall() {
+        for (Wall wall : GameEngine.getWalls()) {
+            double playerLeft = x - width / 2;
+            double wallRight = wall.getX() + wall.getWidth();
+
+            // Check if left side of player is touching right side of wall
+            if (Math.abs(playerLeft - wallRight) < 2 &&
+                    y + height / 2 > wall.getY() &&
+                    y - height / 2 < wall.getY() + wall.getHeight()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if player is touching a wall on the left side
+     */
+    public boolean isTouchingLeftWall() {
+        for (Wall wall : GameEngine.getWalls()) {
+            double playerRight = x + width / 2;
+            double wallLeft = wall.getX();
+
+            // Check if right side of player is touching left side of wall
+            if (Math.abs(playerRight - wallLeft) < 2 &&
+                    y + height / 2 > wall.getY() &&
+                    y - height / 2 < wall.getY() + wall.getHeight()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Getters and setters
+    public int getDirection() {
+        return hDirection;
+    }
+
+    public int getSwap() {
+        return swap;
+    }
+
+    public void setPogo(boolean pogo) {
+        if (pogoCool == 0) {
+            this.pogo = pogo;
+        }
+    }
 }

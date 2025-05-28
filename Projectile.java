@@ -1,282 +1,176 @@
 import java.awt.*;
-import java.awt.image.*;
-import java.io.IOException;
-import javax.imageio.ImageIO;
 
-public class Projectile {
-    //mostly same variables as NPC.java
-    public boolean active = true;
-    private BufferedImage image;
-    public int ID;
-    public padr pos = new padr();
-    private final pair hitbox;
-    private final padr wallBox;
-    private final padr vel;
-    private padr acc;
-    private long last;
-    private long now;
-    private long totalTime = 0;
-    public pair box[];
-    private int way = 0;
+/**
+ * Projectile class representing weapons, spells, and other active game elements
+ */
+public class Projectile extends Entity {
+    private int ID;
+    private int direction = 0;
+    private long creationTime;
 
-    public Projectile(double centerX, double centerY, int projID, padr vel) {
-        
-        this.hitbox = new pair();
-        this.wallBox = new padr();
-        this.pos.first = centerX;
-        this.pos.second = centerY;
-        this.ID = projID;
-        this.vel = vel;
-        this.box = new pair[2];
-        box[0] = new pair();
-        box[1] = new pair();
-        acc = new padr();
-        last = System.nanoTime();
+    /**
+     * Create a new projectile
+     */
+    public Projectile(double centerX, double centerY, int projectileID, Vector2D initialVelocity) {
+        super(centerX, centerY, 30, 30, "");
 
-        switch (projID) {
-            //so far projectile sprites have not been added
-
-            //horizontal melee attack
+        this.ID = projectileID;
+        this.velocity = new Vector2D(initialVelocity);
+        this.creationTime = System.nanoTime();
+        // Set properties based on projectile type
+        switch (projectileID) {
+            // Horizontal melee attack
             case 1 -> {
-                wallBox.set(45, 40);
-                hitbox.set(15, 15);
-                way = Main.player.hDirection;
+                spritePath = "/Sprites/friendlinessPellet.png"; // Add sprite for melee
+                width = 90;
+                height = 80;
+                direction = GameEngine.getPlayer() != null ? GameEngine.getPlayer().getDirection() : 1;
             }
-
-            //upwards melee attack
+            // Upwards melee attack
             case 2 -> {
-                wallBox.set(30, 50);
-                hitbox.set(15, 15);
-                way = Main.player.hDirection;
+                spritePath = "/Sprites/friendlinessPellet.png"; // Add sprite for upward melee
+                width = 60;
+                height = 100;
+                direction = GameEngine.getPlayer() != null ? GameEngine.getPlayer().getDirection() : 1;
             }
-
-            //downwards melee attack
+            // Downwards melee attack
             case 3 -> {
-                wallBox.set(30, 50);
-                hitbox.set(15, 15);
-                way = Main.player.hDirection;
+                spritePath = "/Sprites/friendlinessPellet.png"; // Add sprite for downward melee
+                width = 60;
+                height = 100;
+                direction = GameEngine.getPlayer() != null ? GameEngine.getPlayer().getDirection() : 1;
             }
-
-            //horizontal ranged attack
+            // Horizontal ranged attack
             case 4 -> {
-                wallBox.set(35, 28);
-                hitbox.set(15, 15);
-                way = Main.player.hDirection;
+                spritePath = "/Sprites/thec oin.png"; // Add sprite for ranged attack
+                width = 70;
+                height = 56;
+                direction = GameEngine.getPlayer() != null ? GameEngine.getPlayer().getDirection() : 1;
             }
-
-            //player clone
+            // Player clone
             case 5 -> {
-                try{image = ImageIO.read(getClass().getResource("/Sprites/friendlinessPellet.png"));}
-                catch(IOException | IllegalArgumentException e){}
-                hitbox.set(25, 32);
-                wallBox.set(25, 37);
+                spritePath = "/Sprites/friendlinessPellet.png";
+                width = 50;
+                height = 74;
             }
-
-            //unused default
+            // Default
             default -> {
-                try{image = ImageIO.read(getClass().getResource("/Sprites/friendlinessPellet.png"));}
-                catch(IOException | IllegalArgumentException e){}
-                hitbox.set(32, 32);
-                wallBox.set(15, 15);
-                acc.set(0, -0.9);
+                spritePath = "/Sprites/friendlinessPellet.png";
+                width = 64;
+                height = 30;
+                acceleration.setY(0.9); // Apply gravity to this projectile type
             }
-            
         }
+
+        // Load the sprite
+        loadSprite();
     }
 
-    //display ===========================================================================================================
-    
-    //same method as in NPC.java
-    public void draw(Graphics g) {
-        if (active && image != null) {
-            g.drawImage(image, (int)pos.first-(int)wallBox.first, (int)pos.second-(int)wallBox.second, null);
-        }
-    }
-
-    //movement ===========================================================================================================
-
-    //same methods as in NPC.java
-    private boolean insideWall(pair[] box){
-
-        if(box[1].first < pos.second-wallBox.second && pos.second-wallBox.second < box[1].second
-            &&!(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first))return true;
-
-        if(box[1].first < pos.second+wallBox.second && pos.second+wallBox.second < box[1].second
-                && !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first))return true;
-
-        if(box[0].first < pos.first-wallBox.first && pos.first-wallBox.first < box[0].second
-            &&!(pos.second-wallBox.second > box[1].second || pos.second+wallBox.second < box[1].first))return true;
-
-        if(box[0].first < pos.first+wallBox.first && pos.first+wallBox.first < box[0].second
-            &&!(pos.second-wallBox.second > box[1].second || pos.second+wallBox.second < box[1].first))return true;
-        return false;
-    }
-
-    private void collideWall(pair[] box){
-        
-        if(!insideWall(box))return;
-        
-        double leftDist = Math.abs(pos.first-wallBox.first - box[0].second);
-        double rightDist = Math.abs(pos.first+wallBox.first - box[0].first);
-        double upDist = Math.abs(pos.second-wallBox.second - box[1].second);
-        double downDist = Math.abs(pos.second+wallBox.second - box[1].first);
-        double minDist = Math.min(Math.min(leftDist, rightDist), Math.min(upDist, downDist));
-
-        if(minDist==leftDist){
-            pos.first = box[0].second+wallBox.first;
-        }
-        if(minDist==rightDist){
-            pos.first = box[0].first - wallBox.first;
-        }
-        if(minDist==upDist){
-            pos.second = box[1].second+wallBox.second;
-        }
-        if(minDist==downDist){
-            pos.second = box[1].first - wallBox.second;
-        }
-
-    }
-
-    public boolean touchingU(){
-        for(pair[] box : walls.bounds){
-            if(  (pos.second+wallBox.second <= box[1].first && pos.second+wallBox.second >= box[1].first )&& !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first)   ){
-                return true;
-            }
-        }
-
-        for(Projectile box : Main.proj){
-            if(this==box)continue;
-            if(  (pos.second+wallBox.second <= box.box[1].first && pos.second+wallBox.second >= box.box[1].first )&& !(pos.first-wallBox.first > box.box[0].second || pos.first+wallBox.first < box.box[0].first)   ){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean touchingR(){
-        for(pair[] box : walls.bounds){
-            if(box[0].second <= pos.first-wallBox.first && pos.first-wallBox.first<=box[0].second
-            &&!(pos.second-wallBox.second > box[1].second || pos.second+wallBox.second < box[1].first)){
-                return true;
-            }
-        }
-
-        for(Projectile box : Main.proj){
-            if(this == box)continue;
-            if(box.box[0].second <= pos.first-wallBox.first && pos.first-wallBox.first<=box.box[0].second
-            &&!(pos.second-wallBox.second > box.box[1].second || pos.second+wallBox.second < box.box[1].first)){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean touchingL(){
-        for(pair[] box : walls.bounds){
-            if(box[0].first >= pos.first+wallBox.first && pos.first+wallBox.first>=box[0].first
-            &&!(pos.second-wallBox.second > box[1].second || pos.second+wallBox.second < box[1].first)){
-                return true;
-            }
-        }
-
-        for(Projectile box : Main.proj){
-            if(this == box)continue;
-            if(box.box[0].first >= pos.first+wallBox.first && pos.first+wallBox.first>=box.box[0].first
-            &&!(pos.second-wallBox.second > box.box[1].second || pos.second+wallBox.second < box.box[1].first)){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean touchingD(){
-        for(pair[] box : walls.bounds){
-            if(  (pos.second-wallBox.second >= box[1].second && pos.second-wallBox.second <= box[1].second )&& !(pos.first-wallBox.first > box[0].second || pos.first+wallBox.first < box[0].first)   ){
-                return true;
-            }
-        }
-        for(Projectile box : Main.proj){
-            if(this==box)continue;
-            if(  (pos.second-wallBox.second >= box.box[1].second && pos.second-wallBox.second <= box.box[1].second )&& !(pos.first-wallBox.first > box.box[0].second || pos.first+wallBox.first < box.box[0].first)   ){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    //update code
+    @Override
     public void update() {
-        now = System.nanoTime(); //time tracker
-        totalTime+=(now-last);
-        
-        switch(ID){ //update differently based on ID
-            //directional melee swings that roughly follow player and dissapear shortly
-            case 1->{
-                if(way == Main.player.hDirection){
-                    pos.first = Main.player.pos.first + 50*way;
-                }
-                pos.second = Main.player.pos.second;
-                if(totalTime > 1000000000 * 0.2){
-                    active = false;
-                }
-            }
-            case 2->{
-                pos.first = Main.player.pos.first;
-                pos.second = Main.player.pos.second-70*Main.player.swap;
-                if(totalTime > 1000000000 * 0.2){
-                    active = false;
-                }
-            }
-            case 3->{ //downwards
-                pos.first = Main.player.pos.first;
-                pos.second = Main.player.pos.second+70*Main.player.swap;
-                if(totalTime > 1000000000 * 0.2){
-                    active = false;
-                }
-                for(Npc n : Main.npc){
-                    if(insideWall(n.box) && Main.player.pogoCool==0){
-                        Main.player.pogo = true;
+        // Handle projectile-specific movement
+        handleProjectileMovement();
+
+        // Apply physics (velocity, acceleration)
+        applyPhysics();
+
+        // Check for wall collisions
+        checkWallCollisions();
+
+        // Time-based behaviors (like automatic deactivation after some time)
+        handleLifetime();
+    }
+
+    /**
+     * Handle projectile-specific movement patterns
+     */
+    private void handleProjectileMovement() {
+        switch (ID) {
+            case 1, 2, 3 -> {
+                // Melee attacks stay at player position but with offset based on direction
+                Player player = GameEngine.getPlayer();
+                if (player != null) {
+                    double offsetX = 0;
+                    double offsetY = 0;
+
+                    if (ID == 1) { // Horizontal attack
+                        offsetX = direction * 45; // 45 pixels in front of player
+                    } else if (ID == 2) { // Upward attack
+                        offsetY = -50; // 50 pixels above player
+                    } else if (ID == 3) { // Downward attack
+                        offsetY = 50; // 50 pixels below player
                     }
+
+                    x = player.getX() + offsetX;
+                    y = player.getY() + offsetY;
                 }
             }
-
-            //ranged horizontal attack that goes in a straight direction and dissapears when it hits a wall
-            case 4->{
-                pos.first+=vel.first*way;
-                for(int i = 0 ; i < walls.bounds.length; i++){
-                    if(walls.active[i] && insideWall(walls.bounds[i])){
-                        active = false;
-                        return;   
-                    }
-                }
-            }
-
-            case 5-> {
-                pos.first = Main.player.pos.first;
-                pos.second = 790-Main.player.pos.second;
-            }
-
-            //unused default
-            default -> {
-                pos.first+=vel.first;
-                pos.second-=vel.second;
-
-                vel.second+=acc.second;
-
-                for(int i = 0 ; i < walls.bounds.length; i++){
-                    if(walls.active[i] && insideWall(walls.bounds[i])){
-                        active = false;
-                        return;   
-                    }
-                }
-                
+            case 4 -> {
+                // Ranged projectile moves in the direction it was fired
+                x += direction * 15; // Move 15 pixels per frame in the direction
             }
         }
+    }
 
-        //hitbox/time updates
-        last=now;
-        box[0].set((int)pos.first-(int)wallBox.first, (int)pos.first+(int)wallBox.first);
-        box[1].set((int)pos.second-(int)wallBox.second, (int)pos.second+(int)wallBox.second);
-        
+    /**
+     * Handle collision with walls
+     */
+    private void checkWallCollisions() {
+        for (Wall wall : GameEngine.getWalls()) {
+            if (isCollidingWithWall(wall)) {
+                // For most projectiles, deactivate on wall collision
+                if (ID != 5) { // Except player clone type
+                    setActive(false);
+                } else {
+                    handleWallCollision(wall);
+                }
+            }
+        } // Check for collisions with NPCs if this is an attack projectile
+        if (ID >= 1 && ID <= 4) {
+            for (Npc npc : GameEngine.getNpcs()) {
+                if (isColliding(npc)) {
+                    // Handle damage to NPC here if needed
+                    // Special case: downward strike triggers pogo
+                    if (ID == 3 && GameEngine.getPlayer() != null) {
+                        GameEngine.getPlayer().setPogo(true);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Handle projectile lifetime and expiration
+     */
+    private void handleLifetime() {
+        long now = System.nanoTime();
+        double lifetime = (now - creationTime) / 1_000_000_000.0; // Convert to seconds
+
+        // Different lifetime for different projectile types
+        switch (ID) {
+            case 1, 2, 3 -> {
+                if (lifetime > 0.2)
+                    setActive(false); // Short duration for melee attacks
+            }
+            case 4 -> {
+                if (lifetime > 2.0)
+                    setActive(false); // Longer duration for ranged attacks
+            }
+            // Other projectiles might stay until they hit something or go off-screen
+        }
+
+        // Deactivate if off-screen
+        if (x < -500 || x > 3000 || y < -500 || y > 1500) {
+            setActive(false);
+        }
+    }
+
+    // Getters
+    public int getID() {
+        return ID;
+    }
+
+    public int getDirection() {
+        return direction;
     }
 }

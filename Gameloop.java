@@ -4,61 +4,73 @@ import java.awt.image.BufferStrategy;
 import java.util.*;
 import javax.swing.*;
 
-public class Gameloop extends Canvas implements Runnable, KeyListener {
-    private final JFrame frame; //
-    public static final int WIDTH = 1920, HEIGHT = 1080; //dimensions of frame
+/**
+ * Gameloop class that handles the rendering and timing of the game
+ */
+public class Gameloop extends Canvas implements Runnable, KeyListener, ComponentListener {
+    private final JFrame frame;
     public static boolean running = false;
-    public static final Set<Integer> keys = new HashSet<>(); //key presses
-    //fps calculations
+
+    // FPS calculations
     private int frames = 0;
     private int fps = 0;
     private long fpsTimer = System.currentTimeMillis();
 
-    //creates the window in the constructor
-    public Gameloop() {
-        frame = new JFrame("CS CPT");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setIgnoreRepaint(true); 
-        // frame.setResizable(false);
+    // Set to track pressed keys
+    private final Set<Integer> keys = new HashSet<>();
 
-        setPreferredSize(new Dimension(WIDTH, HEIGHT));
+    /**
+     * Create the game window and initialize the canvas
+     */
+    public Gameloop() {
+        frame = new JFrame("Game Window");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setIgnoreRepaint(true);
+        GameSettings settings = GameSettings.getInstance();
+        setPreferredSize(new Dimension(settings.getWidth(), settings.getHeight()));
         setFocusable(true);
         addKeyListener(this);
+        addComponentListener(this);
 
         frame.add(this);
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
-        frame.setExtendedState(frame.MAXIMIZED_BOTH);
+        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-        createBufferStrategy(2); 
+        createBufferStrategy(2);
     }
 
-    //starts running the thread
+    /**
+     * Start the game loop
+     */
     public void start() {
         running = true;
         new Thread(this).start();
     }
 
-    //main system that processes every tick at about 60fps
+    /**
+     * Main game loop that runs at approximately 60fps
+     */
     @Override
     public void run() {
-        //frame calculations
-        final long frameTime = 1_000_000_000 / 60;
+        // Frame calculations
+        final long frameTime = 1_000_000_000 / 60; // Target 60 FPS
         long lastTime = System.nanoTime();
 
-        //keep gameloop running
+        // Initialize game state
+        GameEngine.initializeGame(); // Keep gameloop running
         while (running) {
-
             long now = System.nanoTime();
             if (now - lastTime >= frameTime) {
-                //draw/process each element
-                render();
-                update();
+                // Update game state
+                GameEngine.update();
 
-                // more fps calculations
+                // Render the current frame
+                render();
+
+                // FPS calculations
                 frames++;
-                
                 if (System.currentTimeMillis() - fpsTimer >= 1000) {
                     fps = frames;
                     frames = 0;
@@ -68,112 +80,129 @@ public class Gameloop extends Canvas implements Runnable, KeyListener {
             }
 
             try {
-                Thread.sleep(1);//do this to not fry the cpu
-            } catch (Exception e) {}
-        }
-    }
-
-    public void update() {
-        //move all projectiles from multithread safe queue to main arraylist
-        while (!Main.queuedProjectiles.isEmpty()) {
-            if (Main.proj.size() < Main.max_proj) {
-                Main.proj.add(Main.queuedProjectiles.poll());
-            } else {
-                // Avoid going over the limit
-                Main.queuedProjectiles.poll();
-            }
-        }
-        
-        //update the player
-        Main.player.update();
-        Main.clone.update();
-
-        //update each projectile, remove if inactive
-        for(int i = 0 ; i < Main.proj.size(); i++){
-            Main.proj.get(i).update();
-            if(!Main.proj.get(i).active){
-                Main.proj.remove(i);
-                i--;
-            }
-        }
-
-        //update each npc, remove if inactive
-        for(int i = 0 ; i < Main.npc.size(); i++){
-            Main.npc.get(i).update();
-            if(!Main.npc.get(i).active){
-                Main.npc.remove(i);
-                i--;
+                Thread.sleep(1); // Yield to prevent CPU overuse
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }
 
-
-
+    /**
+     * Render the current game state
+     */
     private void render() {
-        //necessary for graphics somehow
         BufferStrategy bs = getBufferStrategy();
+        if (bs == null) {
+            createBufferStrategy(2);
+            return;
+        }
+
+        // Use Graphics2D for better rendering quality
         Graphics2D g = (Graphics2D) bs.getDrawGraphics();
 
-        // Clear screen
-        g.setColor(Color.WHITE);
-        g.fillRect(0, 0, WIDTH, HEIGHT);
+        // Enable antialiasing for better quality scaling
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
-        // Grid
-        g.setColor(Color.GRAY);
-        for (int x = 0; x < WIDTH; x += 50)
-            g.drawLine(x, 0, x, HEIGHT);
-        for (int y = 0; y < HEIGHT; y += 50)
-            g.drawLine(0, y, WIDTH, y);
+        // Apply scaling transform to render at current resolution
+        GameSettings settings = GameSettings.getInstance();
+        g.scale(settings.getScaleX(), settings.getScaleY());
+
+        // Clear the screen with scaled coordinates
+        g.setColor(settings.getBackgroundColor());
+        g.fillRect(0, 0, settings.getBaseWidth(), settings.getBaseHeight()); // Draw grid for visual reference if
+                                                                             // enabled
+        if (GameSettings.getInstance().isShowGrid()) {
+            g.setColor(GameSettings.getInstance().getGridColor());
+            for (int x = 0; x < settings.getBaseWidth(); x += 50) {
+                g.drawLine(x, 0, x, settings.getBaseHeight());
+            }
+            for (int y = 0; y < settings.getBaseHeight(); y += 50) {
+                g.drawLine(0, y, settings.getBaseWidth(), y);
+            }
+        }
 
         g.setStroke(new BasicStroke(3));
-        
-        //walls
-        g.setColor(Color.BLACK);
-        int I = -1;
-        for(pair[] i : walls.bounds){
-            I++;
-            if(!walls.active[I])continue;
-            g.fillRect(i[0].first, i[1].first, i[0].second-i[0].first, i[1].second-i[1].first);
+
+        // Render game elements
+        GameEngine.render(g); // Display debug information if enabled
+        if (GameSettings.getInstance().isShowDebug()) {
+            g.setStroke(new BasicStroke(1));
+            g.setColor(Color.BLACK);
+            g.setFont(new Font("Arial", Font.PLAIN, 24));
+
+            int lineY = 30;
+            int lineHeight = 30;
+
+            if (GameSettings.getInstance().isShowFPS()) {
+                g.drawString("FPS: " + fps, 13, lineY);
+                lineY += lineHeight;
+            }
+
+            g.drawString("Projectiles: " + GameEngine.getProjectiles().size(), 13, lineY);
+            lineY += lineHeight;
+
+            if (!GameEngine.getNpcs().isEmpty()) {
+                g.drawString("NPCs: " + GameEngine.getNpcs().size(), 13, lineY);
+                lineY += lineHeight;
+            }
+
+            // Display active keys for debugging
+            g.drawString("Active Keys: " + GameEngine.getKeys().size(), 13, lineY);
+            lineY += lineHeight;
+
+            // Display resolution and scaling info
+            g.drawString("Resolution: " + settings.getWidth() + "x" + settings.getHeight(), 13, lineY);
+            lineY += lineHeight;
+            g.drawString("Scale: " + String.format("%.2f", settings.getScaleX()) + "x"
+                    + String.format("%.2f", settings.getScaleY()), 13, lineY);
         }
 
-        //draw all npcs and projectiles + their hitboxes
-        g.setColor(Color.RED);   
-        for(Projectile p : Main.proj){
-            p.draw(g);
-            g.drawRect(p.box[0].first, p.box[1].first, p.box[0].second-p.box[0].first, p.box[1].second-p.box[1].first);        
-        }
-
-        for(Npc p : Main.npc){
-            p.draw(g);
-            g.drawRect(p.box[0].first, p.box[1].first, p.box[0].second-p.box[0].first, p.box[1].second-p.box[1].first);        
-        }
-        
-
-        //render player
-        g.setColor(Color.GREEN);
-        g.drawRect((int)Main.player.pos.first - (int)Main.player.wallBox.first, (int)Main.player.pos.second - (int)Main.player.wallBox.second, 2*(int)Main.player.wallBox.first+1, 2*(int)Main.player.wallBox.second+1);
-        Main.player.draw(g);
-        Main.clone.draw(g);
-
-        g.setStroke(new BasicStroke(1));
-
-        //add some text on screen, mostly debugging for now
-        g.setColor(Color.BLACK);
-        g.setFont(new Font("Arial", Font.PLAIN, 24));
-        g.drawString("FPS: " + fps, 13, 30);
-        g.drawString("Projectiles: " + Main.proj.size(), 13, 60);
-        if(Main.npc.size()>0)g.drawString("Damage: " + Main.npc.get(0).damage, 13, 90);
-        g.drawString("pogo: " + Main.player.pogo, 13, 120);
-        g.drawString("pogoCool: " + Main.player.pogoCool, 13, 150);
-
-        //also necessary for graphics
-        g.dispose(); // release Graphics
-        bs.show();   // draw to screen
+        // Clean up
+        g.dispose();
+        bs.show();
         Toolkit.getDefaultToolkit().sync(); // force render
+    } // Add/remove pressed keys to a hashset to detect what the user is pressing
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        keys.add(e.getKeyCode());
+        GameEngine.keyPressed(e.getKeyCode());
     }
 
-    //Add/remove pressed keys to a hashset to detect what the user is pressing
-    @Override public void keyPressed(KeyEvent e) { keys.add(e.getKeyCode()); }
-    @Override public void keyReleased(KeyEvent e) {keys.remove(e.getKeyCode()); }
-    @Override public void keyTyped(KeyEvent e) {}
+    @Override
+    public void keyReleased(KeyEvent e) {
+        keys.remove(e.getKeyCode());
+        GameEngine.keyReleased(e.getKeyCode());
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+        // Not used
+    }
+
+    // ComponentListener methods for handling window resize
+    @Override
+    public void componentResized(ComponentEvent e) {
+        // Update GameSettings when window is resized
+        Dimension newSize = getSize();
+        if (newSize.width > 0 && newSize.height > 0) {
+            GameSettings.getInstance().updateResolution(newSize.width, newSize.height);
+        }
+    }
+
+    @Override
+    public void componentMoved(ComponentEvent e) {
+        // Not needed
+    }
+
+    @Override
+    public void componentShown(ComponentEvent e) {
+        // Not needed
+    }
+
+    @Override
+    public void componentHidden(ComponentEvent e) {
+        // Not needed
+    }
 }
