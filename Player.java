@@ -420,6 +420,9 @@ public class Player extends Entity {
      * Check if player is touching the ground
      */
     public boolean isTouchingGround() {
+        // Increased tolerance for more reliable ground detection
+        final double GROUND_TOLERANCE = 3.0;
+
         for (Wall wall : GameEngine.getWalls()) {
             double playerBottom, wallSurface;
 
@@ -433,10 +436,10 @@ public class Player extends Entity {
                 wallSurface = wall.getY() + wall.getHeight();
             }
 
-            // Check if player is touching the surface
-            if (Math.abs(playerBottom - wallSurface) < 2 &&
-                    x + width / 2 > wall.getX() &&
-                    x - width / 2 < wall.getX() + wall.getWidth()) {
+            // Check if player is touching the surface with tolerance
+            if (Math.abs(playerBottom - wallSurface) < GROUND_TOLERANCE &&
+                    x + width / 2 > wall.getX() + 0.1 &&
+                    x - width / 2 < wall.getX() + wall.getWidth() - 0.1) {
                 return true;
             }
         }
@@ -447,6 +450,9 @@ public class Player extends Entity {
      * Check if player is touching a ceiling
      */
     public boolean isTouchingCeiling() {
+        // Increased tolerance for more reliable ceiling detection
+        final double CEILING_TOLERANCE = 3.0;
+
         for (Wall wall : GameEngine.getWalls()) {
             double playerTop, wallSurface;
 
@@ -460,10 +466,10 @@ public class Player extends Entity {
                 wallSurface = wall.getY();
             }
 
-            // Check if player is touching the surface
-            if (Math.abs(playerTop - wallSurface) < 2 &&
-                    x + width / 2 > wall.getX() &&
-                    x - width / 2 < wall.getX() + wall.getWidth()) {
+            // Check if player is touching the surface with tolerance
+            if (Math.abs(playerTop - wallSurface) < CEILING_TOLERANCE &&
+                    x + width / 2 > wall.getX() + 0.1 &&
+                    x - width / 2 < wall.getX() + wall.getWidth() - 0.1) {
                 return true;
             }
         }
@@ -474,14 +480,17 @@ public class Player extends Entity {
      * Check if player is touching a wall on the right side
      */
     public boolean isTouchingRightWall() {
+        // Increased tolerance for more reliable wall detection
+        final double WALL_TOLERANCE = 3.0;
+
         for (Wall wall : GameEngine.getWalls()) {
             double playerLeft = x - width / 2;
             double wallRight = wall.getX() + wall.getWidth();
 
-            // Check if left side of player is touching right side of wall
-            if (Math.abs(playerLeft - wallRight) < 2 &&
-                    y + height / 2 > wall.getY() &&
-                    y - height / 2 < wall.getY() + wall.getHeight()) {
+            // Check if left side of player is touching right side of wall with tolerance
+            if (Math.abs(playerLeft - wallRight) < WALL_TOLERANCE &&
+                    y + height / 2 > wall.getY() + 0.1 &&
+                    y - height / 2 < wall.getY() + wall.getHeight() - 0.1) {
                 return true;
             }
         }
@@ -492,14 +501,17 @@ public class Player extends Entity {
      * Check if player is touching a wall on the left side
      */
     public boolean isTouchingLeftWall() {
+        // Increased tolerance for more reliable wall detection
+        final double WALL_TOLERANCE = 3.0;
+
         for (Wall wall : GameEngine.getWalls()) {
             double playerRight = x + width / 2;
             double wallLeft = wall.getX();
 
-            // Check if right side of player is touching left side of wall
-            if (Math.abs(playerRight - wallLeft) < 2 &&
-                    y + height / 2 > wall.getY() &&
-                    y - height / 2 < wall.getY() + wall.getHeight()) {
+            // Check if right side of player is touching left side of wall with tolerance
+            if (Math.abs(playerRight - wallLeft) < WALL_TOLERANCE &&
+                    y + height / 2 > wall.getY() + 0.1 &&
+                    y - height / 2 < wall.getY() + wall.getHeight() - 0.1) {
                 return true;
             }
         }

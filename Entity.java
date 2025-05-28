@@ -76,6 +76,9 @@ public abstract class Entity extends GameObject {
      * Check if this entity is colliding with a wall
      */
     protected boolean isCollidingWithWall(Wall wall) {
+        // Small tolerance to account for floating-point precision
+        final double TOLERANCE = 0.01;
+
         double entityLeft = x - hitboxWidth / 2;
         double entityRight = x + hitboxWidth / 2;
         double entityTop = y - hitboxHeight / 2;
@@ -86,10 +89,11 @@ public abstract class Entity extends GameObject {
         double wallTop = wall.getY();
         double wallBottom = wall.getY() + wall.getHeight();
 
-        return entityRight > wallLeft &&
-                entityLeft < wallRight &&
-                entityBottom > wallTop &&
-                entityTop < wallBottom;
+        // Use tolerance to prevent edge-clipping issues
+        return (entityRight - TOLERANCE) > wallLeft &&
+                (entityLeft + TOLERANCE) < wallRight &&
+                (entityBottom - TOLERANCE) > wallTop &&
+                (entityTop + TOLERANCE) < wallBottom;
     }
 
     /**
@@ -99,6 +103,10 @@ public abstract class Entity extends GameObject {
         if (!isCollidingWithWall(wall))
             return;
 
+        // Small buffer to prevent floating-point precision issues and immediate
+        // re-collision
+        final double COLLISION_BUFFER = 0.1;
+
         double entityLeft = x - hitboxWidth / 2;
         double entityRight = x + hitboxWidth / 2;
         double entityTop = y - hitboxHeight / 2;
@@ -109,30 +117,51 @@ public abstract class Entity extends GameObject {
         double wallTop = wall.getY();
         double wallBottom = wall.getY() + wall.getHeight();
 
-        // Calculate collision depths
+        // Calculate collision depths (how far the entity penetrated into the wall)
         double leftDepth = entityRight - wallLeft;
         double rightDepth = wallRight - entityLeft;
         double topDepth = entityBottom - wallTop;
         double bottomDepth = wallBottom - entityTop;
 
-        // Find smallest penetration depth
+        // Find smallest penetration depth to determine collision direction
         double minDepth = Math.min(Math.min(leftDepth, rightDepth), Math.min(topDepth, bottomDepth));
 
-        // find collision based on minimum penetration
-        if (minDepth == leftDepth) {
-            x = wallLeft - hitboxWidth / 2;
-            velocity.setX(0); // Stop horizontal movement
-        } else if (minDepth == rightDepth) {
-            x = wallRight + hitboxWidth / 2;
-            velocity.setX(0); // Stop horizontal movement
-        } else if (minDepth == topDepth) {
-            y = wallTop - hitboxHeight / 2;
-            velocity.setY(0); // Stop vertical movement
-        } else if (minDepth == bottomDepth) {
-            y = wallBottom + hitboxHeight / 2;
-            velocity.setY(0); // Stop vertical movement
+        // Resolve collision based on minimum penetration with buffer for clean
+        // separation
+        if (minDepth == leftDepth && leftDepth > 0) {
+            // Entity hit wall from the right side
+            x = wallLeft - hitboxWidth / 2 - COLLISION_BUFFER;
+            // Stop velocity in collision direction and opposing acceleration
+            if (velocity.getX() > 0)
+                velocity.setX(0);
+            if (acceleration.getX() > 0)
+                acceleration.setX(0);
+        } else if (minDepth == rightDepth && rightDepth > 0) {
+            // Entity hit wall from the left side
+            x = wallRight + hitboxWidth / 2 + COLLISION_BUFFER;
+            // Stop velocity in collision direction and opposing acceleration
+            if (velocity.getX() < 0)
+                velocity.setX(0);
+            if (acceleration.getX() < 0)
+                acceleration.setX(0);
+        } else if (minDepth == topDepth && topDepth > 0) {
+            // Entity hit wall from below
+            y = wallTop - hitboxHeight / 2 - COLLISION_BUFFER;
+            // Stop velocity in collision direction and opposing acceleration
+            if (velocity.getY() > 0)
+                velocity.setY(0);
+            if (acceleration.getY() > 0)
+                acceleration.setY(0);
+        } else if (minDepth == bottomDepth && bottomDepth > 0) {
+            // Entity hit wall from above
+            y = wallBottom + hitboxHeight / 2 + COLLISION_BUFFER;
+            // Stop velocity in collision direction and opposing acceleration
+            if (velocity.getY() < 0)
+                velocity.setY(0);
+            if (acceleration.getY() < 0)
+                acceleration.setY(0);
         }
-    } // Getters and setters
+    }// Getters and setters
 
     public Vector2D getVelocity() {
         return velocity;
