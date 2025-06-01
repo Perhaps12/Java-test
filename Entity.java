@@ -44,7 +44,7 @@ public abstract class Entity extends GameObject {
             try {
                 this.sprite = ImageIO.read(getClass().getResourceAsStream(spritePath));
             } catch (IOException | IllegalArgumentException e) {
-                System.out.println("Could not load sprite: " + spritePath);
+                System.out.println("couldn't load sprite " + spritePath);
             }
         }
     }
@@ -52,7 +52,7 @@ public abstract class Entity extends GameObject {
     @Override
     public void draw(Graphics g) {
         if (active && sprite != null) {
-            g.drawImage(sprite, (int) (x - width / 2), (int) (y - height / 2), null);
+            g.drawImage(sprite, (int) (x - hitboxWidth / 2), (int) (y - hitboxHeight / 2), null);
         }
     }
 

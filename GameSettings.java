@@ -16,6 +16,19 @@ public class GameSettings {
     private final int baseWidth = 1920; // Reference resolution
     private final int baseHeight = 1080;
 
+    // Level dimensions (scalable game world size)
+    private double levelWidthMultiplier = 1.5; // Level width matches screen width exactly
+    private double levelHeightMultiplier = 1.0; // Level height matches screen height exactly
+    private final int levelWidth = (int) (baseWidth * levelWidthMultiplier); // 1920 pixels (exact screen width)
+    private final int levelHeight = (int) (baseHeight * levelHeightMultiplier); // 1080 pixels (exact screen height)
+
+    // Level boundaries for collision detection and camera bounds
+    private final int wallThickness = 50; // Thickness of border walls (thin so they don't reduce playable area)
+    private final int levelLeft = wallThickness; // Left boundary
+    private final int levelRight = levelWidth - wallThickness; // Right boundary
+    private final int levelTop = wallThickness; // Top boundary
+    private final int levelBottom = levelHeight - wallThickness; // Bottom boundary
+
     // Game settings
     private boolean soundEnabled = true;
     private float mainVolume = 1.0f;
@@ -71,10 +84,10 @@ public class GameSettings {
             this.scaleX = (double) width / baseWidth;
             this.scaleY = (double) height / baseHeight;
 
-            System.out.println("Detected resolution: " + width + "x" + height);
-            System.out.println("Scale factors: X=" + scaleX + ", Y=" + scaleY);
+            System.out.println("resolution: " + width + "x" + height);
+            System.out.println("scale, x=" + scaleX + ", y=" + scaleY);
         } catch (Exception e) {
-            System.err.println("Failed to detect screen resolution, using default: " + e.getMessage());
+            System.err.println("couldn't detect resolution, using 1920x1080 " + e.getMessage());
             // Keep default 1920x1080 if detection fails
         }
     }
@@ -112,6 +125,44 @@ public class GameSettings {
 
     public int getBaseHeight() {
         return baseHeight;
+    }
+
+    // Getters for level dimensions
+    public int getLevelWidth() {
+        return levelWidth;
+    }
+
+    public int getLevelHeight() {
+        return levelHeight;
+    }
+
+    public double getLevelWidthMultiplier() {
+        return levelWidthMultiplier;
+    }
+
+    public double getLevelHeightMultiplier() {
+        return levelHeightMultiplier;
+    }
+
+    public int getWallThickness() {
+        return wallThickness;
+    }
+
+    // Getters for level boundaries
+    public int getLevelLeft() {
+        return levelLeft;
+    }
+
+    public int getLevelRight() {
+        return levelRight;
+    }
+
+    public int getLevelTop() {
+        return levelTop;
+    }
+
+    public int getLevelBottom() {
+        return levelBottom;
     }
 
     /**
@@ -238,8 +289,18 @@ public class GameSettings {
         this.scaleX = (double) width / baseWidth;
         this.scaleY = (double) height / baseHeight;
 
-        System.out.println("Resolution updated to: " + width + "x" + height);
-        System.out.println("New scale factors: X=" + scaleX + ", Y=" + scaleY);
+        System.out.println("updated resolution " + width + "x" + height);
+        System.out.println("scale factors, x=" + scaleX + ", y=" + scaleY);
+    }
+
+    /**
+     * Set level size multipliers (allows dynamic level resizing)
+     */
+    public void setLevelMultipliers(double widthMultiplier, double heightMultiplier) {
+        // Note: This would require updating the level dimensions and recreating walls
+        // For now, these are set at initialization time
+        System.out.println("Level multipliers would be set to: " + widthMultiplier + "x" + heightMultiplier);
+        System.out.println("Current level size: " + levelWidth + "x" + levelHeight + " pixels");
     }
 
     // Helper method to clamp values

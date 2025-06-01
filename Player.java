@@ -27,7 +27,7 @@ public class Player extends Entity {
     // Fall distance tracking for impact shake effects
     private double fallStartY = 0;
     private boolean wasFalling = false;
-    private static final double HARD_LANDING_THRESHOLD = 220; // pixels fallen for hard landing shake
+    private static final double HARD_LANDING_THRESHOLD = 200; // pixels fallen for hard landing shake
 
     // Combat
     private int[] cooldown = new int[99]; // Cooldowns for attacks
@@ -64,7 +64,7 @@ public class Player extends Entity {
     @Override
     public void draw(Graphics g) {
         if (sprite != null) {
-            g.drawImage(sprite, (int) (x - width / 2), (int) (y - height / 2), null);
+            g.drawImage(sprite, (int) (x - hitboxWidth / 2), (int) (y - hitboxHeight / 2), null);
         }
     }
 
@@ -83,9 +83,10 @@ public class Player extends Entity {
             // when falling
             if (wasFalling && Math.abs(y - fallStartY) > HARD_LANDING_THRESHOLD) {
                 double fallDistance = Math.abs(y - fallStartY);
-                double shakeIntensity = Math.min(25, fallDistance / 8); // Scale intensity with fall distance
-                int shakeDuration = (int) Math.min(10, fallDistance / 6); // Scale duration with fall distance, cap at
-                                                                          // 15 frames
+                double shakeIntensity = Math.min(25, fallDistance / 20); // Scale intensity with fall distance
+                int shakeDuration = (int) Math.min(10, fallDistance / 30); // Scale duration with fall distance, cap at
+                                                                           // 10 frames
+                System.out.println("fall distance land " + fallDistance);
 
                 // Only trigger if it's a significant landing or no current shake
                 if (camera.shouldOverrideShake(shakeIntensity)) {
@@ -98,7 +99,8 @@ public class Player extends Entity {
             fallStartY = y; // Reset fall start position when on ground
         } else {
             // Track falling state for hard landing detection
-            if (!wasFalling && velocity.getY() < -5) { // Started falling with significant downward velocity
+            // Start tracking when player has any downward velocity
+            if (!wasFalling && (velocity.getY() < -4) && coyoteTime == 0) {
                 wasFalling = true;
                 fallStartY = y;
             }
@@ -195,9 +197,7 @@ public class Player extends Entity {
         // Fast fall
         if (GameEngine.isKeyPressed(KeyEvent.VK_DOWN)) {
             acceleration.setY(-1.6);
-        }
-
-        // Dash
+        } // Dash
         if (GameEngine.isKeyPressed(KeyEvent.VK_C)) {
             if (dashCool == 0) {
                 velocity2.setY(22);
@@ -422,24 +422,23 @@ public class Player extends Entity {
     public boolean isTouchingGround() {
         // Increased tolerance for more reliable ground detection
         final double GROUND_TOLERANCE = 3.0;
-
         for (Wall wall : GameEngine.getWalls()) {
             double playerBottom, wallSurface;
 
             if (swap == 1) {
                 // Normal gravity - check bottom of player against top of wall
-                playerBottom = y + height / 2;
+                playerBottom = y + hitboxHeight / 2;
                 wallSurface = wall.getY();
             } else {
                 // Inverted gravity - check top of player against bottom of wall
-                playerBottom = y - height / 2;
+                playerBottom = y - hitboxHeight / 2;
                 wallSurface = wall.getY() + wall.getHeight();
             }
 
             // Check if player is touching the surface with tolerance
             if (Math.abs(playerBottom - wallSurface) < GROUND_TOLERANCE &&
-                    x + width / 2 > wall.getX() + 0.1 &&
-                    x - width / 2 < wall.getX() + wall.getWidth() - 0.1) {
+                    x + hitboxWidth / 2 > wall.getX() + 0.1 &&
+                    x - hitboxWidth / 2 < wall.getX() + wall.getWidth() - 0.1) {
                 return true;
             }
         }
@@ -452,24 +451,23 @@ public class Player extends Entity {
     public boolean isTouchingCeiling() {
         // Increased tolerance for more reliable ceiling detection
         final double CEILING_TOLERANCE = 3.0;
-
         for (Wall wall : GameEngine.getWalls()) {
             double playerTop, wallSurface;
 
             if (swap == 1) {
                 // Normal gravity - check top of player against bottom of wall
-                playerTop = y - height / 2;
+                playerTop = y - hitboxHeight / 2;
                 wallSurface = wall.getY() + wall.getHeight();
             } else {
                 // Inverted gravity - check bottom of player against top of wall
-                playerTop = y + height / 2;
+                playerTop = y + hitboxHeight / 2;
                 wallSurface = wall.getY();
             }
 
             // Check if player is touching the surface with tolerance
             if (Math.abs(playerTop - wallSurface) < CEILING_TOLERANCE &&
-                    x + width / 2 > wall.getX() + 0.1 &&
-                    x - width / 2 < wall.getX() + wall.getWidth() - 0.1) {
+                    x + hitboxWidth / 2 > wall.getX() + 0.1 &&
+                    x - hitboxWidth / 2 < wall.getX() + wall.getWidth() - 0.1) {
                 return true;
             }
         }
@@ -482,15 +480,14 @@ public class Player extends Entity {
     public boolean isTouchingRightWall() {
         // Increased tolerance for more reliable wall detection
         final double WALL_TOLERANCE = 3.0;
-
         for (Wall wall : GameEngine.getWalls()) {
-            double playerLeft = x - width / 2;
+            double playerLeft = x - hitboxWidth / 2;
             double wallRight = wall.getX() + wall.getWidth();
 
             // Check if left side of player is touching right side of wall with tolerance
             if (Math.abs(playerLeft - wallRight) < WALL_TOLERANCE &&
-                    y + height / 2 > wall.getY() + 0.1 &&
-                    y - height / 2 < wall.getY() + wall.getHeight() - 0.1) {
+                    y + hitboxHeight / 2 > wall.getY() + 0.1 &&
+                    y - hitboxHeight / 2 < wall.getY() + wall.getHeight() - 0.1) {
                 return true;
             }
         }
@@ -503,15 +500,14 @@ public class Player extends Entity {
     public boolean isTouchingLeftWall() {
         // Increased tolerance for more reliable wall detection
         final double WALL_TOLERANCE = 3.0;
-
         for (Wall wall : GameEngine.getWalls()) {
-            double playerRight = x + width / 2;
+            double playerRight = x + hitboxWidth / 2;
             double wallLeft = wall.getX();
 
             // Check if right side of player is touching left side of wall with tolerance
             if (Math.abs(playerRight - wallLeft) < WALL_TOLERANCE &&
-                    y + height / 2 > wall.getY() + 0.1 &&
-                    y - height / 2 < wall.getY() + wall.getHeight() - 0.1) {
+                    y + hitboxHeight / 2 > wall.getY() + 0.1 &&
+                    y - hitboxHeight / 2 < wall.getY() + wall.getHeight() - 0.1) {
                 return true;
             }
         }

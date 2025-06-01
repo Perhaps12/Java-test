@@ -4,17 +4,27 @@ import java.awt.*;
  * Camera class that handles screen shake effects and player following
  */
 public class Camera {
-    private static Camera instance;
-
-    // Camera position and following
+    private static Camera instance; // Camera position and following
     private double cameraX = 0;
     private double cameraY = 0;
     private double followSpeed = 0.3; // How quickly camera follows player (0.1 = smooth, 1.0 = instant) // Level
-                                      // boundaries (based on border walls in GameEngine)
-    private static final double LEVEL_LEFT = 7;
-    private static final double LEVEL_RIGHT = 1527;
-    private static final double LEVEL_TOP = 7;
-    private static final double LEVEL_BOTTOM = 785;
+                                      // boundaries (using scalable system from GameSettings)
+
+    private double getLevelLeft() {
+        return 0; // Camera left edge
+    }
+
+    private double getLevelRight() {
+        return GameSettings.getInstance().getLevelWidth(); // Camera right edge
+    }
+
+    private double getLevelTop() {
+        return GameSettings.getInstance().getLevelHeight() / 2; // Top of upper section
+    }
+
+    private double getLevelBottom() {
+        return -GameSettings.getInstance().getLevelHeight() / 2; // Bottom of lower section
+    }
 
     // Screen dimensions for camera bounds calculation
     private static final double SCREEN_WIDTH = 1920;
@@ -63,6 +73,7 @@ public class Camera {
 
     /**
      * Update camera position to follow the player with boundary constraints
+     * Camera is fixed vertically to show both sections, only follows horizontally
      */
     private void updatePlayerFollowing() {
         // Get player position from GameEngine
@@ -71,50 +82,39 @@ public class Camera {
             return;
 
         double playerX = player.getX();
-        double playerY = player.getY();
 
-        // Calculate desired camera position (center player on screen)
+        // Calculate desired camera position (center player horizontally)
         double targetCameraX = playerX - SCREEN_WIDTH / 2;
-        double targetCameraY = playerY - SCREEN_HEIGHT / 2;
 
-        // For smaller levels, we need to allow negative camera positions to keep player
-        // centered
-        // while ensuring we don't show beyond level boundaries
+        // Keep camera vertically centered to show both top and bottom sections
+        // Camera Y should be 0 (center line) minus half screen height to center the
+        // view
+        double targetCameraY = -SCREEN_HEIGHT / 2;
 
-        // Calculate maximum extents where camera can go
-        double maxCameraLeft = LEVEL_LEFT;
-        double maxCameraRight = LEVEL_RIGHT - SCREEN_WIDTH;
-        double maxCameraTop = LEVEL_TOP;
-        double maxCameraBottom = LEVEL_BOTTOM - SCREEN_HEIGHT;
+        // Get level boundaries from scalable system for horizontal constraints only
+        double levelLeft = getLevelLeft();
+        double levelRight = getLevelRight();
 
-        // If level is smaller than screen, allow camera to go negative to center
-        // content
-        // but clamp to reasonable bounds to prevent showing too much empty space
+        // Calculate horizontal camera bounds
+        double maxCameraLeft = levelLeft;
+        double maxCameraRight = levelRight - SCREEN_WIDTH;
+
+        // If level is smaller than screen horizontally, allow some flexibility
         if (maxCameraRight < maxCameraLeft) {
             // Level width is smaller than screen - allow some flexibility
-            double levelCenterX = (LEVEL_LEFT + LEVEL_RIGHT) / 2;
+            double levelCenterX = (levelLeft + levelRight) / 2;
             double maxOffset = SCREEN_WIDTH * 0.4; // Allow showing 40% empty space on each side
             maxCameraLeft = levelCenterX - SCREEN_WIDTH / 2 - maxOffset;
             maxCameraRight = levelCenterX - SCREEN_WIDTH / 2 + maxOffset;
         }
 
-        if (maxCameraBottom < maxCameraTop) {
-            // Level height is smaller than screen - allow some flexibility
-            double levelCenterY = (LEVEL_TOP + LEVEL_BOTTOM) / 2;
-            double maxOffset = SCREEN_HEIGHT * 0.3; // Allow showing 30% empty space above/below
-            maxCameraTop = levelCenterY - SCREEN_HEIGHT / 2 - maxOffset;
-            maxCameraBottom = levelCenterY - SCREEN_HEIGHT / 2 + maxOffset;
-        }
-
-        // Apply boundary constraints
+        // Apply horizontal boundary constraints only
         targetCameraX = Math.max(targetCameraX, maxCameraLeft);
         targetCameraX = Math.min(targetCameraX, maxCameraRight);
-        targetCameraY = Math.max(targetCameraY, maxCameraTop);
-        targetCameraY = Math.min(targetCameraY, maxCameraBottom);
 
-        // Smoothly interpolate to target position
+        // Smoothly interpolate horizontally, set vertical position directly
         cameraX += (targetCameraX - cameraX) * followSpeed;
-        cameraY += (targetCameraY - cameraY) * followSpeed;
+        cameraY = targetCameraY; // Fixed vertical position to show both sections
     }
 
     /**
@@ -269,6 +269,7 @@ public class Camera {
 
     /**
      * Instantly snap camera to player position (useful for scene transitions)
+     * Only snaps horizontally, vertical position remains fixed
      */
     public void snapToPlayer() {
         Player player = GameEngine.getPlayer();
@@ -276,17 +277,20 @@ public class Camera {
             return;
 
         double playerX = player.getX();
-        double playerY = player.getY();
 
-        // Calculate camera position to center player
+        // Calculate camera position to center player horizontally
         double targetCameraX = playerX - SCREEN_WIDTH / 2;
-        double targetCameraY = playerY - SCREEN_HEIGHT / 2;
 
-        // Apply boundary constraints
-        targetCameraX = Math.max(targetCameraX, LEVEL_LEFT);
-        targetCameraX = Math.min(targetCameraX, LEVEL_RIGHT - SCREEN_WIDTH);
-        targetCameraY = Math.max(targetCameraY, LEVEL_TOP);
-        targetCameraY = Math.min(targetCameraY, LEVEL_BOTTOM - SCREEN_HEIGHT);
+        // Fixed vertical position to show both sections
+        double targetCameraY = -SCREEN_HEIGHT / 2;
+
+        // Get level boundaries from scalable system
+        double levelLeft = getLevelLeft();
+        double levelRight = getLevelRight();
+
+        // Apply horizontal boundary constraints
+        targetCameraX = Math.max(targetCameraX, levelLeft);
+        targetCameraX = Math.min(targetCameraX, levelRight - SCREEN_WIDTH);
 
         // Set camera position directly
         cameraX = targetCameraX;

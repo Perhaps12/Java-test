@@ -34,19 +34,35 @@ public abstract class GameObject {
      * Check if this object is colliding with another game object
      */
     public boolean isColliding(GameObject other) {
-        // Basic AABB collision detection
-        return x < other.x + other.width &&
-                x + width > other.x &&
-                y < other.y + other.height &&
-                y + height > other.y;
+        // Center-based AABB collision detection
+        double thisLeft = x - width / 2;
+        double thisRight = x + width / 2;
+        double thisTop = y - height / 2;
+        double thisBottom = y + height / 2;
+
+        double otherLeft = other.x - other.width / 2;
+        double otherRight = other.x + other.width / 2;
+        double otherTop = other.y - other.height / 2;
+        double otherBottom = other.y + other.height / 2;
+
+        return thisRight > otherLeft &&
+                thisLeft < otherRight &&
+                thisBottom > otherTop &&
+                thisTop < otherBottom;
     }
 
     /**
      * Check if a point is inside this game object
      */
     public boolean containsPoint(double pointX, double pointY) {
-        return pointX >= x && pointX <= x + width &&
-                pointY >= y && pointY <= y + height;
+        // Center-based point containment check
+        double left = x - width / 2;
+        double right = x + width / 2;
+        double top = y - height / 2;
+        double bottom = y + height / 2;
+
+        return pointX >= left && pointX <= right &&
+                pointY >= top && pointY <= bottom;
     }
 
     // Getters and setters

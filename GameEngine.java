@@ -10,28 +10,56 @@ public class GameEngine {
     private static Player player;
     private static final ArrayList<Projectile> projectiles = new ArrayList<>();
     private static final ArrayList<Npc> npcs = new ArrayList<>();
-    private static final ArrayList<Wall> walls = new ArrayList<>();
+    private static Level currentLevel; // Level manages its own walls
 
     // Game settings
     private static final int MAX_PROJECTILES = 1000;
     private static final ConcurrentLinkedQueue<Projectile> queuedProjectiles = new ConcurrentLinkedQueue<>();
-    private static final Set<Integer> keys = new HashSet<>(); // Dimensions (from GameSettings)
+    private static final Set<Integer> keys = new HashSet<>();
+
+    // Dimensions (from GameSettings)
     public static final int WIDTH = GameSettings.getInstance().getBaseWidth();
     public static final int HEIGHT = GameSettings.getInstance().getBaseHeight();
+
+    // Level dimensions (scalable world size)
+    public static final int LEVEL_WIDTH = GameSettings.getInstance().getLevelWidth();
+    public static final int LEVEL_HEIGHT = GameSettings.getInstance().getLevelHeight();
 
     /**
      * Initialize the game world
      */
     public static void initializeGame() {
-        // Create player
-        player = new Player("/Sprites/O-4.png", 600, 100);
+        GameSettings settings = GameSettings.getInstance(); // Create the level (uncomment one of these options)
 
-        // Create NPCs
-        npcs.add(new Npc(640, 380, 0)); // Coin in middle
-        npcs.add(new Npc(1000, 100, 1)); // Clone NPC
+        // Option 1: Default level layout
+        // currentLevel = new Level("Main Level",
+        // settings.getLevelWidth(),
+        // settings.getLevelHeight(),
+        // settings.getWallThickness());
 
-        // Create walls
-        createWalls();
+        // Option 2: Level with mirrored platforms across center dividing wall
+        currentLevel = Level.createMirroredLevel("Mirrored Level",
+                settings.getLevelWidth(),
+                settings.getLevelHeight(),
+                settings.getWallThickness());
+
+        // Create player at the level's spawn point
+        currentLevel.setPlayerSpawnPoint(0, -100);
+        Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
+        player = new Player("/Sprites/O-4.png", playerSpawn.getX(), playerSpawn.getY());
+
+        // Create NPCs at their spawn points
+        ArrayList<Vector2D> npcSpawns = currentLevel.getNpcSpawnPoints();
+
+        if (npcSpawns.size() > 0) {
+            Vector2D coinSpawn = npcSpawns.get(0);
+            npcs.add(new Npc(coinSpawn.getX(), coinSpawn.getY(), 0)); // Coin NPC
+        }
+
+        if (npcSpawns.size() > 1) {
+            Vector2D cloneSpawn = npcSpawns.get(1);
+            npcs.add(new Npc(cloneSpawn.getX(), cloneSpawn.getY(), 1)); // Clone NPC
+        }
     }
 
     /**
@@ -55,14 +83,20 @@ public class GameEngine {
                 npcs.remove(i);
                 i--;
             }
-        } // Update projectiles
+        }
+
+        // Update projectiles
         for (int i = 0; i < projectiles.size(); i++) {
             projectiles.get(i).update();
             if (!projectiles.get(i).isActive()) {
                 projectiles.remove(i);
                 i--;
             }
-        }
+        } // Update level
+        if (currentLevel != null) {
+            currentLevel.update();
+        } // Update water boundary effects
+        WaterBoundary.getInstance().update();
 
         // Update camera
         Camera.getInstance().update();
@@ -75,12 +109,11 @@ public class GameEngine {
         Graphics2D g2d = (Graphics2D) g;
 
         // Apply camera transform for world objects
-        Camera.getInstance().applyTransform(g2d);
-
-        // Draw walls
-        for (Wall wall : walls) {
-            wall.draw(g);
-        }
+        Camera.getInstance().applyTransform(g2d); // Draw level (walls and background)
+        if (currentLevel != null) {
+            currentLevel.drawWalls(g);
+        } // Draw water boundary effect (behind everything else)
+        WaterBoundary.getInstance().draw(g2d);
 
         // Draw player
         if (player != null) {
@@ -90,54 +123,13 @@ public class GameEngine {
         // Draw NPCs
         for (Npc npc : npcs) {
             npc.draw(g);
-        }
-
-        // Draw projectiles
+        } // Draw projectiles
         for (Projectile proj : projectiles) {
             proj.draw(g);
         }
 
-        // Remove camera transform (for UI elements if needed)
+        // Remove camera transform for ui
         Camera.getInstance().removeTransform(g2d);
-    }
-
-    /**
-     * Create all walls in the game world
-     */
-    private static void createWalls() {
-        // Border walls
-        walls.add(new Wall(0, -400, 507, 3900)); // Left wall
-        walls.add(new Wall(0, -500, 3900, 507)); // Top wall
-        walls.add(new Wall(1920, -400, 1973, 3900)); // Right wall
-        walls.add(new Wall(0, 785, 3900, 2715)); // Bottom wall
-
-        // Interior walls and platforms
-        walls.add(new Wall(0, 490, 500, 210)); // Big rectangle
-        walls.add(new Wall(440, 490, 60, 230)); // Rectangle extension
-
-        // Jail area
-        walls.add(new Wall(1190, 340, 410, 10)); // Jail top
-        walls.add(new Wall(1130, 400, 10, 680)); // Jail side
-
-        // Hanging fan
-        walls.add(new Wall(150, 200, 200, 10)); // Fan blade
-        walls.add(new Wall(245, 0, 10, 210)); // Fan stem
-
-        // Floating platforms for camera testing
-        walls.add(new Wall(700, 150, 200, 50)); // Square platform
-        walls.add(new Wall(900, 250, 150, 20)); // Small platform
-        walls.add(new Wall(1200, 100, 100, 20)); // High platform
-        walls.add(new Wall(1400, 300, 120, 20)); // Mid platform
-
-        // Ground level platforms
-        walls.add(new Wall(705, 510, 60, 10)); // Small ground platform
-        walls.add(new Wall(800, 600, 200, 20)); // Medium ground platform
-        walls.add(new Wall(1100, 650, 300, 30)); // Large ground platform
-
-        // Elevated platforms for vertical movement
-        walls.add(new Wall(200, 350, 100, 15)); // Mid-level platform
-        walls.add(new Wall(350, 280, 80, 15)); // Higher platform
-        walls.add(new Wall(500, 220, 120, 15)); // Even higher platform
     }
 
     /**
@@ -145,6 +137,28 @@ public class GameEngine {
      */
     public static void addProjectile(Projectile projectile) {
         queuedProjectiles.add(projectile);
+    }
+
+    /**
+     * Load a new level
+     */
+    public static void loadLevel(Level newLevel) {
+        currentLevel = newLevel;
+
+        // Reset entities when loading new level
+        Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
+        if (player != null) {
+            player.setPosition(playerSpawn.getX(), playerSpawn.getY());
+        }
+
+        System.out.println("loaded level " + currentLevel.getLevelName());
+    }
+
+    /**
+     * Get the current level
+     */
+    public static Level getCurrentLevel() {
+        return currentLevel;
     }
 
     /**
@@ -174,7 +188,7 @@ public class GameEngine {
     }
 
     public static ArrayList<Wall> getWalls() {
-        return walls;
+        return currentLevel != null ? currentLevel.getWalls() : new ArrayList<>();
     }
 
     public static Set<Integer> getKeys() {
