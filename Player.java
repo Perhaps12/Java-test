@@ -27,7 +27,7 @@ public class Player extends Entity {
     // Fall distance tracking for impact shake effects
     private double fallStartY = 0;
     private boolean wasFalling = false;
-    private static final double HARD_LANDING_THRESHOLD = 200; // pixels fallen for hard landing shake
+    private static final double HARD_LANDING_THRESHOLD = 300; // pixels fallen for hard landing shake
 
     // Combat
     private int[] cooldown = new int[99]; // Cooldowns for attacks
@@ -79,8 +79,8 @@ public class Player extends Entity {
         acceleration.setX(0); // Check if standing on ground
         boolean onGround = isTouchingGround();
         if (onGround) {
-            // Check for hard landing shake effect - Y increases downward, so y > fallStartY
-            // when falling
+            // Check for hard landing shake effect
+            // Y increases downward, so y > fallStartY when falling
             if (wasFalling && Math.abs(y - fallStartY) > HARD_LANDING_THRESHOLD) {
                 double fallDistance = Math.abs(y - fallStartY);
                 double shakeIntensity = Math.min(25, fallDistance / 20); // Scale intensity with fall distance
@@ -92,6 +92,8 @@ public class Player extends Entity {
                 if (camera.shouldOverrideShake(shakeIntensity)) {
                     camera.shake(shakeIntensity, shakeDuration, Camera.ShakeType.CIRCULAR);
                 }
+                WaterBoundary waterBoundary = WaterBoundary.getInstance();
+                waterBoundary.createWaterEntry(x, 0.0, 20, swap);
             }
             velocity.setY(Math.max(-0.2, velocity.getY()));
             coyoteTime = 5;
@@ -331,6 +333,7 @@ public class Player extends Entity {
      * Process player attacks and weapon use
      */
     private void processAttacks() { // Ranged attack
+        WaterBoundary waterBoundary = WaterBoundary.getInstance();
         if (GameEngine.isKeyPressed(KeyEvent.VK_X) && !shot[0] && cooldown[0] == 0) {
             shot[0] = true;
 
@@ -392,8 +395,10 @@ public class Player extends Entity {
                 shot[2] = true;
                 swap *= -1;
 
-                // Add shake effect for character swap
+                fallStartY = y; // Reset fall start position on swap so it doesn't trigger hard landing // Add
+                                // shake effect for character swap
                 Camera camera = Camera.getInstance();
+                waterBoundary.createWaterEntry(x, 0.0, 20, -swap);
                 camera.shake(8, 12, Camera.ShakeType.CIRCULAR);
             }
         }

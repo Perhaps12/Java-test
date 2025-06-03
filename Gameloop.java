@@ -112,15 +112,6 @@ public class Gameloop extends Canvas implements Runnable, KeyListener, Component
         g.setColor(settings.getBackgroundColor());
         g.fillRect(0, 0, settings.getBaseWidth(), settings.getBaseHeight()); // Draw grid for visual reference if
                                                                              // enabled
-        if (GameSettings.getInstance().isShowGrid()) {
-            g.setColor(GameSettings.getInstance().getGridColor());
-            for (int x = 0; x < settings.getBaseWidth(); x += 50) {
-                g.drawLine(x, 0, x, settings.getBaseHeight());
-            }
-            for (int y = 0; y < settings.getBaseHeight(); y += 50) {
-                g.drawLine(0, y, settings.getBaseWidth(), y);
-            }
-        }
 
         g.setStroke(new BasicStroke(3));
 

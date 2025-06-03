@@ -124,8 +124,19 @@ public class GameEngine {
         for (Npc npc : npcs) {
             npc.draw(g);
         } // Draw projectiles
-        for (Projectile proj : projectiles) {
-            proj.draw(g);
+        for (Projectile p : projectiles) {
+            p.draw(g);
+            // Draw hitbox around projectile
+            g2d.setColor(Color.RED);
+            g2d.setStroke(new BasicStroke(2.0f));
+            double[] box = p.box();
+            double left = box[0];
+            double right = box[1];
+            double top = box[2];
+            double bottom = box[3];
+            int boxWidth = (int) (right - left);
+            int boxHeight = (int) (bottom - top);
+            g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
         }
 
         // Remove camera transform for ui

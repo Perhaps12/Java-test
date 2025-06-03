@@ -14,66 +14,77 @@ public class WaterBoundary {
 
     // Water boundary properties
     private static final double WATER_LEVEL = 0.0; // Y coordinate of water surface (center line)
-    private static final double WATER_DEPTH = 60.0; // How deep the water effect extends
+    private static final double WATER_DEPTH = 540.0; // How deep the water effect extends
     private static final int WATER_SEGMENTS = 150; // Number of segments for water surface
-
-    // Water physics simulation
     private ArrayList<WaterSegment> waterSegments;
     private ArrayList<WaterParticle> waterParticles;
     private ArrayList<WaterSplash> splashes;
-    private long lastUpdateTime;
-
-    // Player interaction tracking
-    private boolean playerInWater = false;
-    private double lastPlayerY = 0;
-    private double playerVelocityY = 0;
+    private long lastUpdateTime; // Player interaction tracking
 
     /**
-     * Individual water segment for surface simulation
+     * Individual water segment for random surface simulation
      */
     private static class WaterSegment {
         public double x;
         public double y;
-        public double targetY;
-        public double velocity;
-        public double force;
-
-        // Water properties
-        private static final double SPRING_STRENGTH = 0.02; // Surface tension
-        private static final double DAMPING = 0.98; // Wave damping
-        private static final double MAX_VELOCITY = 3.0; // Maximum wave velocity
+        public double baseY;
+        public double randomOffset;
+        public double randomVelocity;
+        public double randomPhase;
+        public double displacement;
+        public double displacementDecay; // Random water properties
+        private static final double MAX_RANDOM_OFFSET = 1.1; // Increased for more visible movement
+        private static final double RANDOM_SPEED = 0.05; // Increased speed of random movement
+        private static final double DISPLACEMENT_DECAY = 0.95; // How quickly displacement fades (slower decay)
+        private static final double MAX_DISPLACEMENT = 30.0; // Increased maximum displacement
 
         public WaterSegment(double x, double y) {
             this.x = x;
             this.y = y;
-            this.targetY = y;
-            this.velocity = 0;
-            this.force = 0;
-        }        public void update() {
-            // Spring force towards target position with slight random variation
-            force = -SPRING_STRENGTH * (y - targetY);
-            
-            // Add subtle random variations for more natural movement
-            if (Math.random() < 0.01) { // 1% chance per frame for random impulse
-                force += (Math.random() - 0.5) * 0.02; // Very small random force
-            }
-
-            // Apply force to velocity
-            velocity += force;
-            
-            // Apply damping with slight variation for more organic movement
-            double dampingVariation = DAMPING + (Math.random() - 0.5) * 0.002; // ±0.001 variation
-            velocity *= dampingVariation;
-
-            // Clamp velocity
-            velocity = Math.max(-MAX_VELOCITY, Math.min(MAX_VELOCITY, velocity));
-
-            // Update position
-            y += velocity;
+            this.baseY = y;
+            this.randomOffset = 0;
+            this.randomVelocity = (Math.random() - 0.5) * 0.2; // Increased initial velocity
+            this.randomPhase = Math.random() * Math.PI * 4; // Random starting phase
+            this.displacement = 0;
+            this.displacementDecay = DISPLACEMENT_DECAY;
         }
 
-        public void applyDisplacement(double displacement) {
-            velocity += displacement;
+        public void update() {
+            // Update random phase for sine wave movement
+            randomPhase += RANDOM_SPEED + randomVelocity;
+
+            // Generate random offset using sine wave with noise
+            randomOffset = Math.sin(randomPhase) * MAX_RANDOM_OFFSET;
+
+            // Add some noise for more chaotic movement
+            if (Math.random() < 0.10) { // 5% chance for random impulse
+                randomOffset += (Math.random() - 0.5) * 2.0;
+            }
+
+            // Update displacement from player interactions
+            displacement *= displacementDecay;
+
+            // Calculate final position
+            y = baseY + randomOffset + displacement;
+
+            // Occasionally change velocity for variety
+            if (Math.random() < 0.01) {
+                randomVelocity += (Math.random() - 0.5) * 0.05;
+                randomVelocity = Math.max(-0.1, Math.min(0.1, randomVelocity));
+            }
+        }
+
+        public void applyDisplacement(double displacementAmount) {
+            // Add player interaction displacement with some randomness
+            double oldDisplacement = displacement;
+            displacement += displacementAmount * (0.8 + Math.random() * 0.4);
+            displacement = Math.max(-MAX_DISPLACEMENT, Math.min(MAX_DISPLACEMENT, displacement));
+
+            // Debug output for significant displacements
+            if (Math.abs(displacementAmount) > 1.0) {
+                System.out.println("Segment at X: " + x + " displaced by " + displacementAmount +
+                        " (old: " + oldDisplacement + ", new: " + displacement + ")");
+            }
         }
     }
 
@@ -86,17 +97,19 @@ public class WaterBoundary {
         public double life;
         public double maxLife;
         public Color color;
+        public int gravitySwap; // Track gravity direction for this particle
 
-        private static final double GRAVITY = 0.4; // Increased gravity for more visible movement
+        private static final double GRAVITY = 0.4; // Gravity strength
         private static final double AIR_RESISTANCE = 0.995; // Reduced air resistance for longer movement
 
-        public WaterParticle(double x, double y, double vx, double vy, double life) {
+        public WaterParticle(double x, double y, double vx, double vy, double life, int gravitySwap) {
             this.x = x;
             this.y = y;
             this.vx = vx;
             this.vy = vy;
             this.life = life;
             this.maxLife = life;
+            this.gravitySwap = gravitySwap;
 
             // Water blue color with transparency
             int alpha = (int) (180 + Math.random() * 75);
@@ -104,8 +117,10 @@ public class WaterBoundary {
         }
 
         public void update() {
-            // Apply physics
-            vy += GRAVITY; // Gravity increases downward velocity (positive Y is down)
+            // Apply physics with gravity direction based on swap
+            // Normal gravity (swap = 1): gravity pulls down (positive Y)
+            // Inverted gravity (swap = -1): gravity pulls up (negative Y)
+            vy += GRAVITY * gravitySwap; // Gravity direction depends on swap
             vx *= AIR_RESISTANCE;
             vy *= AIR_RESISTANCE;
 
@@ -210,112 +225,25 @@ public class WaterBoundary {
         double deltaTime = (currentTime - lastUpdateTime) / 1000.0;
         lastUpdateTime = currentTime;
 
-        // Update player interaction
-        updatePlayerInteraction();
-
-        // Update water segments (wave physics)
         updateWaterSegments();
-
-        // Update water particles
         updateWaterParticles();
-
-        // Update splash effects
         updateSplashes(deltaTime);
-
-        // Spread waves between segments (surface tension simulation)
         spreadWaves();
-    }
-
-    /**
-     * Update player interaction with water boundary
-     */
-    private void updatePlayerInteraction() {
-        Player player = GameEngine.getPlayer();
-        if (player == null) {
-            System.out.println("No player found");
-            return;
-        }
-
-        double playerY = player.getY();
-        double playerX = player.getX();
-        // Debug player position only when near water
-        if (playerInWater && System.currentTimeMillis() % 1000 < 50) {
-            System.out.println("Player position: (" + playerX + ", " + playerY + "), Water level: " + WATER_LEVEL);
-        }
-
-        // Calculate player velocity
-        playerVelocityY = playerY - lastPlayerY;
-        lastPlayerY = playerY; // Check if player is crossing water boundary
-        boolean wasInWater = playerInWater;
-        playerInWater = Math.abs(playerY - WATER_LEVEL) < 60; // Broader interaction zone for water effects
-
-        if (playerInWater && System.currentTimeMillis() % 1000 < 50) {
-            System.out.println("Player is in water! Velocity: " + playerVelocityY);
-        } // Player entering water from above or below (responsive to movement)
-        if (!wasInWater && playerInWater && Math.abs(playerVelocityY) > 2) {
-            System.out.println("Player entering water! Impact: " + Math.abs(playerVelocityY));
-            createWaterEntry(playerX, playerY, Math.abs(playerVelocityY));
-        }
-
-        // Player dashing through water
-        if (playerInWater && isPlayerDashing()) {
-            System.out.println("Player dashing through water!");
-            createDashEffect(playerX, playerY);
-        }
-
-        // Continuous water displacement while in water
-        if (playerInWater) {
-            createContinuousDisplacement(playerX, Math.abs(playerVelocityY) * 0.5);
-        }
-    }
-
-    /**
-     * Check if player is currently dashing
-     */
-    private boolean isPlayerDashing() {
-        Player player = GameEngine.getPlayer();
-        if (player == null)
-            return false;
-
-        // Detect dashing based on very high velocity changes (actual dash ability)
-        return Math.abs(playerVelocityY) > 25; // Much higher threshold for dash detection
     }
 
     /**
      * Create water entry effect when player crosses boundary
      */
-    private void createWaterEntry(double playerX, double playerY, double impact) {
-        splashes.add(new WaterSplash(playerX, WATER_LEVEL, impact * 0.3));
-        displaceWaterSegments(playerX, impact * 2.0, 80);
-        createWaterParticles(playerX, WATER_LEVEL, impact * 0.8, 15 + (int) (impact * 3)); 
-    }
+    public void createWaterEntry(double playerX, double playerY, double impact, int gravitySwap) { // must be public for
+                                                                                                   // player effects
+        splashes.add(new WaterSplash(playerX, WATER_LEVEL, impact * 0.8));
+        displaceWaterSegments(playerX, impact * 4.0, 60, gravitySwap);
+        createWaterParticles(playerX, WATER_LEVEL, impact * 0.8, (int) impact, gravitySwap);
+    }/*
+      * Displace water segments around a point
+      */
 
-    /**
-     * Create enhanced effect when player dashes through water
-     */
-    private void createDashEffect(double playerX, double playerY) {
-        splashes.add(new WaterSplash(playerX, WATER_LEVEL, 8.0));
-        displaceWaterSegments(playerX, 6.0, 120);
-        createWaterParticles(playerX, WATER_LEVEL, 12.0, 25);
-    }
-
-    /**
-     * Create continuous displacement while player is in water
-     */
-    private void createContinuousDisplacement(double playerX, double intensity) {
-        // Gentle, continuous displacement
-        displaceWaterSegments(playerX, intensity * 0.3, 40);
-
-        // Occasional small particles
-        if (Math.random() < 0.1) {
-            createWaterParticles(playerX, WATER_LEVEL, intensity * 0.5, 2);
-        }
-    }
-
-    /**
-     * Displace water segments around a point
-     */
-    private void displaceWaterSegments(double centerX, double force, double radius) {
+    private void displaceWaterSegments(double centerX, double force, double radius, int gravitySwap) {
         for (WaterSegment segment : waterSegments) {
             double distance = Math.abs(segment.x - centerX);
             if (distance < radius) {
@@ -323,25 +251,36 @@ public class WaterBoundary {
                 double falloff = 1.0 - (distance / radius);
                 double displacement = force * falloff * falloff; // Quadratic falloff
 
+                // Mirror displacement direction based on gravity swap
+                displacement *= gravitySwap; // Positive displacement since when swapping it will invert gravity 
+                // before it actually displaces, so when landing we will apply a negative swap
+
                 segment.applyDisplacement(displacement);
             }
         }
-    }    /**
+    }
+
+    /**
      * Create water particles for splash effects
      */
-    private void createWaterParticles(double centerX, double centerY, double intensity, int count) {
-        // Create water particles for splash effects with reduced spread intensity
-
+    private void createWaterParticles(double centerX, double centerY, double intensity, int count, int gravitySwap) {
         for (int i = 0; i < count; i++) {
-            // Reduced random position spread around center
-            double offsetX = (Math.random() - 0.5) * 25; // Reduced from 40 to 25
-            double offsetY = (Math.random() - 0.5) * 15; // Reduced from 20 to 15
-            
-            // Reduced velocity spread for less intense particle scattering
-            double vx = (Math.random() - 0.5) * intensity * 0.8; // Reduced from 2.0 to 0.8
-            double vy = -(Math.random() * intensity * 0.8 + intensity * 0.3); // Reduced spread and base velocity
+            // Random position spread around center
+            double offsetX = (Math.random() - 0.5) * 25;
+            double offsetY = (Math.random() - 0.5) * 15;
 
-            // Random lifetime
+            // Random velocity with reduced scattering
+            double vx = (Math.random() - 0.5) * intensity * 0.8;
+
+            // Modify vertical velocity based on gravity swap
+            double vy;
+            if (gravitySwap == 1) {
+                vy = -(Math.random() * intensity * 0.8 + intensity * 0.3); // Upward bias
+            } else {
+                vy = (Math.random() * intensity * 0.8 + intensity * 0.3); // Downward bias
+            }
+
+            // Particle lifetime
             double life = 60 + Math.random() * 90; // 1-2.5 seconds at 60fps
 
             WaterParticle particle = new WaterParticle(
@@ -349,13 +288,11 @@ public class WaterBoundary {
                     centerY + offsetY,
                     vx,
                     vy,
-                    life);
+                    life,
+                    gravitySwap);
 
             waterParticles.add(particle);
-            // Particle created successfully
         }
-
-        // Total particles tracked internally
     }
 
     /**
@@ -395,31 +332,35 @@ public class WaterBoundary {
                 iterator.remove();
             }
         }
-    }    /**
-     * Spread waves between adjacent segments (surface tension simulation)
+    }
+
+    /**
+     * Create random wave patterns between segments
      */
     private void spreadWaves() {
         if (waterSegments.size() < 2)
             return;
 
-        // Apply wave spreading (surface tension)
+        // Create random wave influences between neighboring segments
         for (int i = 1; i < waterSegments.size() - 1; i++) {
             WaterSegment current = waterSegments.get(i);
             WaterSegment left = waterSegments.get(i - 1);
             WaterSegment right = waterSegments.get(i + 1);
 
-            // Calculate height differences
-            double leftDiff = left.y - current.y;
-            double rightDiff = right.y - current.y;
+            // Add slight influence from neighboring segments for more wave-like patterns
+            if (Math.random() < 0.02) { // 2% chance per frame
+                double influence = ((left.randomOffset + right.randomOffset) / 2) * 0.1;
+                current.displacement += influence;
+            }
 
-            // Apply surface tension forces with randomness
-            double tensionForce = 0.008; // Base surface tension strength
-            double randomFactor = 0.8 + Math.random() * 0.4; // Random factor between 0.8 and 1.2
-            current.velocity += (leftDiff + rightDiff) * tensionForce * randomFactor;
-            
-            // Add small random disturbances for natural wave movement
-            if (Math.random() < 0.02) { // 2% chance per segment per frame
-                current.velocity += (Math.random() - 0.5) * 0.3; // Small random impulse
+            // Add random disturbances for natural wave movement
+            if (Math.random() < 0.03) { // 3% chance per segment per frame
+                current.displacement += (Math.random() - 0.5) * 0.5;
+            }
+
+            // Add occasional larger disturbances for more interesting patterns
+            if (Math.random() < 0.005) { // 0.5% chance for larger disturbance
+                current.displacement += (Math.random() - 0.5) * 1.2;
             }
         }
     }
@@ -622,9 +563,10 @@ public class WaterBoundary {
         // Reset all water segments to neutral position
         for (WaterSegment segment : waterSegments) {
             segment.y = WATER_LEVEL;
-            segment.targetY = WATER_LEVEL;
-            segment.velocity = 0;
-            segment.force = 0;
+            segment.baseY = WATER_LEVEL;
+            segment.randomOffset = 0;
+            segment.displacement = 0;
+            segment.randomPhase = Math.random() * Math.PI * 2; // Reset with new random phase
         }
     }
     // public void testWaterEffects() {

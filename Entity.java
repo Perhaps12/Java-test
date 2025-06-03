@@ -2,6 +2,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import javax.imageio.ImageIO;
+import java.util.List;
 
 /**
  * Base class for game entities with sprite rendering, collision handling and
@@ -185,6 +186,15 @@ public abstract class Entity extends GameObject {
 
     public void setAcceleration(double x, double y) {
         this.acceleration.set(x, y);
+    }
+
+    public double[] box() {
+        double entityLeft = x - hitboxWidth / 2;
+        double entityRight = x + hitboxWidth / 2;
+        double entityTop = y - hitboxHeight / 2;
+        double entityBottom = y + hitboxHeight / 2;
+
+        return new double[]{entityLeft, entityRight, entityTop, entityBottom};
     }
 
     /**
