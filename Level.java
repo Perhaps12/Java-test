@@ -68,19 +68,19 @@ public class Level {
                 halfHeight,
                 levelWidth,
                 wallThickness));
-
         walls.add(new Wall(0, // top
                 -halfHeight - wallThickness,
                 levelWidth,
                 wallThickness));
 
-        // Center dividing wall s eparates top and bottom sections
-        // Positioned at y=0 origin point
+        // Center dividing wall separates top and bottom sections
+        // Positioned at y=0 origin point (transparent for visual effect)
         walls.add(new Wall(0,
                 -centerWallThickness / 2,
                 levelWidth,
                 centerWallThickness,
-                Color.DARK_GRAY));
+                new Color(0, 0, 0), 
+                0.0f)); // transparent
     }
 
     /**

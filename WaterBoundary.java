@@ -1,7 +1,11 @@
 import java.awt.*;
 import java.awt.geom.*;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
+
+import javax.imageio.ImageIO;
 
 /**
  * WaterBoundary class that creates a realistic liquid water effect
@@ -20,6 +24,10 @@ public class WaterBoundary {
     private ArrayList<WaterParticle> waterParticles;
     private ArrayList<WaterSplash> splashes;
     private long lastUpdateTime; // Player interaction tracking
+
+    // Water texture properties
+    private BufferedImage waterTexture;
+    private boolean textureLoaded = false;
 
     /**
      * Individual water segment for random surface simulation
@@ -109,11 +117,10 @@ public class WaterBoundary {
             this.vy = vy;
             this.life = life;
             this.maxLife = life;
-            this.gravitySwap = gravitySwap;
-
-            // Water blue color with transparency
+            this.gravitySwap = gravitySwap; // Water pink color with transparency
             int alpha = (int) (180 + Math.random() * 75);
-            this.color = new Color(100, 150, 255, alpha);
+            this.color = new Color(240, 142, 254, alpha);
+
         }
 
         public void update() {
@@ -187,6 +194,7 @@ public class WaterBoundary {
         lastUpdateTime = System.currentTimeMillis();
 
         initializeWaterSegments();
+        loadWaterTexture();
     }
 
     /**
@@ -200,12 +208,27 @@ public class WaterBoundary {
     }
 
     /**
+     * Load the pink water texture
+     */
+    private void loadWaterTexture() {
+        try {
+            waterTexture = ImageIO.read(getClass().getResourceAsStream("/textures/Pink water.png"));
+            textureLoaded = true;
+            System.out.println("load pink water texture successfully");
+        } catch (IOException | IllegalArgumentException e) {
+            System.out.println("Could not load pink water texture: " + e.getMessage());
+            textureLoaded = false;
+            waterTexture = null;
+        }
+    }
+
+    /**
      * Initialize water segments across the level width
      */
     private void initializeWaterSegments() {
         GameSettings settings = GameSettings.getInstance();
         double levelLeft = settings.getLevelLeft();
-        double levelRight = settings.getLevelRight();
+        double levelRight = settings.getLevelRight() + 50; // extend by 50 because goofy coordinate system lol
         double levelWidth = levelRight - levelLeft;
 
         double segmentWidth = levelWidth / WATER_SEGMENTS;
@@ -252,7 +275,7 @@ public class WaterBoundary {
                 double displacement = force * falloff * falloff; // Quadratic falloff
 
                 // Mirror displacement direction based on gravity swap
-                displacement *= gravitySwap; // Positive displacement since when swapping it will invert gravity 
+                displacement *= gravitySwap; // Positive displacement since when swapping it will invert gravity
                 // before it actually displaces, so when landing we will apply a negative swap
 
                 segment.applyDisplacement(displacement);
@@ -410,25 +433,44 @@ public class WaterBoundary {
 
                 waterPath.quadTo(controlX, controlY, endX, endY);
             }
-        }
-
-        // Close path for filling (extend down for water body)
+        } // Close path for filling (extend down for water body)
         WaterSegment last = waterSegments.get(waterSegments.size() - 1);
         waterPath.lineTo(last.x, WATER_LEVEL + WATER_DEPTH);
         waterPath.lineTo(first.x, WATER_LEVEL + WATER_DEPTH);
-        waterPath.closePath();
+        waterPath.closePath(); // Fill water body with texture or gradient fallback
+        if (textureLoaded && waterTexture != null) {
+            // Create a texture paint with the pink water texture
+            int textureWidth = waterTexture.getWidth();
+            int textureHeight = waterTexture.getHeight();
 
-        // Create water gradient
-        GradientPaint gradient = new GradientPaint(
-                0, (float) WATER_LEVEL, new Color(100, 150, 255, 120),
-                0, (float) (WATER_LEVEL + WATER_DEPTH), new Color(50, 100, 200, 180));
+            // Get the actual water area bounds - entire level width
+            GameSettings settings = GameSettings.getInstance();
+            double levelLeft = settings.getLevelLeft();
+            double levelRight = settings.getLevelRight() + 50; // Match the water segments extension
+            double levelWidth = levelRight - levelLeft;
 
-        // Fill water body
-        g.setPaint(gradient);
-        g.fill(waterPath);
+            // Create texture paint that covers the entire level width
+            // This will stretch/tile the texture across the whole map
+            Rectangle2D textureRect = new Rectangle2D.Double(levelLeft, WATER_LEVEL, levelWidth, WATER_DEPTH);
+            TexturePaint texturePaint = new TexturePaint(waterTexture, textureRect);
 
-        // Draw water surface line
-        g.setColor(new Color(80, 130, 255, 200));
+            // Apply some transparency to blend with the water effects
+            AlphaComposite originalComposite = (AlphaComposite) g.getComposite();
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.8f));
+
+            g.setPaint(texturePaint);
+            g.fill(waterPath);
+
+            g.setComposite(originalComposite);
+        } else {
+            // Fallback to gradient if texture loading failed
+            GradientPaint gradient = new GradientPaint(
+                    0, (float) WATER_LEVEL, new Color(255, 100, 150, 120),
+                    0, (float) (WATER_LEVEL + WATER_DEPTH), new Color(200, 50, 100, 180));
+            g.setPaint(gradient);
+            g.fill(waterPath);
+        } // Draw water surface line
+        g.setColor(new Color(240, 142, 254, 200));
         g.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
         GeneralPath surfaceLine = new GeneralPath();
@@ -479,10 +521,9 @@ public class WaterBoundary {
 
             // Set splash transparency
             AlphaComposite originalComposite = (AlphaComposite) g.getComposite();
-            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) opacity));
-
-            // Draw splash as expanding ring
-            g.setColor(new Color(150, 200, 255, (int) (opacity * 150)));
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) opacity)); // Draw splash as
+                                                                                                  // expanding ring
+            g.setColor(new Color(240, 142, 254, (int) (opacity * 100)));
             g.setStroke(new BasicStroke(2.0f * (float) opacity, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
             int diameter = (int) (splash.radius * 2);
@@ -502,10 +543,8 @@ public class WaterBoundary {
     private void drawWaterDepth(Graphics2D g) {
         GameSettings settings = GameSettings.getInstance();
         double levelLeft = settings.getLevelLeft();
-        double levelRight = settings.getLevelRight();
-
-        // Draw subtle reflection/shimmer lines
-        g.setColor(new Color(200, 230, 255, 40));
+        double levelRight = settings.getLevelRight(); // Draw subtle reflection/shimmer lines
+        g.setColor(new Color(255, 200, 230, 40));
         g.setStroke(new BasicStroke(1.0f));
 
         for (int i = 0; i < 5; i++) {
@@ -518,18 +557,6 @@ public class WaterBoundary {
                     (int) levelRight,
                     (int) (y + offset));
         }
-
-        // Draw water depth gradient overlay
-        GradientPaint depthGradient = new GradientPaint(
-                0, (float) WATER_LEVEL, new Color(0, 0, 0, 0),
-                0, (float) (WATER_LEVEL + WATER_DEPTH), new Color(0, 50, 100, 60));
-
-        g.setPaint(depthGradient);
-        g.fillRect(
-                (int) levelLeft,
-                (int) WATER_LEVEL,
-                (int) (levelRight - levelLeft),
-                (int) WATER_DEPTH);
     }
 
     /**

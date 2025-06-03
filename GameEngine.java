@@ -108,8 +108,11 @@ public class GameEngine {
     public static void render(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
 
+        // Draw fixed background texture (before camera transform so it doesn't move)
+        BackgroundRenderer.getInstance().drawBackground(g2d);
+
         // Apply camera transform for world objects
-        Camera.getInstance().applyTransform(g2d); // Draw level (walls and background)
+        Camera.getInstance().applyTransform(g2d);// Draw level (walls and background)
         if (currentLevel != null) {
             currentLevel.drawWalls(g);
         } // Draw water boundary effect (behind everything else)

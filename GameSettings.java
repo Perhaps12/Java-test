@@ -24,10 +24,10 @@ public class GameSettings {
 
     // Level boundaries for collision detection and camera bounds
     private final int wallThickness = 50; // Thickness of border walls (thin so they don't reduce playable area)
-    private final int levelLeft = wallThickness; // Left boundary
-    private final int levelRight = levelWidth - wallThickness; // Right boundary
-    private final int levelTop = wallThickness; // Top boundary
-    private final int levelBottom = levelHeight - wallThickness; // Bottom boundary
+    private final int levelLeft = 0; // Left boundary
+    private final int levelRight = levelWidth; // Right boundary
+    private final int levelTop = -levelHeight / 2; // Top boundary
+    private final int levelBottom = levelHeight / 2; // Bottom boundary
 
     // Game settings
     private boolean soundEnabled = true;
@@ -281,7 +281,7 @@ public class GameSettings {
     }
 
     /**
-     * Update resolution settings (useful for window resize events)
+     * Update resolution settings
      */
     public void updateResolution(int newWidth, int newHeight) {
         this.width = newWidth;
@@ -293,17 +293,7 @@ public class GameSettings {
         System.out.println("scale factors, x=" + scaleX + ", y=" + scaleY);
     }
 
-    /**
-     * Set level size multipliers (allows dynamic level resizing)
-     */
-    public void setLevelMultipliers(double widthMultiplier, double heightMultiplier) {
-        // Note: This would require updating the level dimensions and recreating walls
-        // For now, these are set at initialization time
-        System.out.println("Level multipliers would be set to: " + widthMultiplier + "x" + heightMultiplier);
-        System.out.println("Current level size: " + levelWidth + "x" + levelHeight + " pixels");
-    }
-
-    // Helper method to clamp values
+    // Helper method to clamp values between a range
     private float clamp(float value, float min, float max) {
         return Math.max(min, Math.min(max, value));
     }

@@ -1,5 +1,8 @@
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import java.io.IOException;
 
 /**
  * Player class representing the user-controlled character
@@ -33,6 +36,15 @@ public class Player extends Entity {
     private int[] cooldown = new int[99]; // Cooldowns for attacks
     private boolean[] shot = new boolean[99]; // Track button presses for attacks
 
+    // Animation system
+    private BufferedImage[] idleSprites;
+    private BufferedImage[] walkSprites;
+    private int currentFrame = 0;
+    private int animationTimer = 0;
+    private static final int IDLE_ANIMATION_SPEED = 10; // frames per sprite change
+    private static final int WALK_ANIMATION_SPEED = 8; // frames per sprite change
+    private boolean isWalking = false;
+
     /**
      * Create a new player with position and sprite
      */
@@ -41,6 +53,76 @@ public class Player extends Entity {
 
         // Set default acceleration (gravity)
         acceleration.setY(0.9);
+
+        // Load animation sprites
+        loadAnimationSprites();
+    }
+
+    /**
+     * Load all animation sprite frames
+     */
+    private void loadAnimationSprites() {
+        // Load idle animation sprites (sprite_0.png to sprite_3.png)
+        idleSprites = new BufferedImage[4];
+        for (int i = 0; i < 4; i++) {
+            try {
+                idleSprites[i] = ImageIO
+                        .read(getClass().getResourceAsStream("/Sprites/Character/Idle/sprite_" + i + ".png"));
+            } catch (IOException | IllegalArgumentException e) {
+                System.out.println("Could not load idle sprite " + i + ": " + e.getMessage());
+            }
+        }
+
+        // Load walk animation sprites (sprite_0.png to sprite_5.png)
+        walkSprites = new BufferedImage[6];
+        for (int i = 0; i < 6; i++) {
+            try {
+                walkSprites[i] = ImageIO
+                        .read(getClass().getResourceAsStream("/Sprites/Character/Walk cycle/sprite_" + i + ".png"));
+            } catch (IOException | IllegalArgumentException e) {
+                System.out.println("Could not load walk sprite " + i + ": " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Update animation frame based on player state
+     */
+    private void updateAnimation() {
+        // Determine if player is walking based on movement
+        boolean wasWalking = isWalking;
+        isWalking = GameEngine.isKeyPressed(KeyEvent.VK_LEFT) || GameEngine.isKeyPressed(KeyEvent.VK_RIGHT);
+
+        // Reset animation if state changed
+        if (wasWalking != isWalking) {
+            currentFrame = 0;
+            animationTimer = 0;
+        }
+
+        // Update animation timer
+        animationTimer++;
+
+        if (isWalking) {
+            // Walking animation
+            if (animationTimer >= WALK_ANIMATION_SPEED) {
+                animationTimer = 0;
+                currentFrame = (currentFrame + 1) % walkSprites.length;
+            }
+            // Use walk sprites
+            if (walkSprites[currentFrame] != null) {
+                sprite = walkSprites[currentFrame];
+            }
+        } else {
+            // Idle animation
+            if (animationTimer >= IDLE_ANIMATION_SPEED) {
+                animationTimer = 0;
+                currentFrame = (currentFrame + 1) % idleSprites.length;
+            }
+            // Use idle sprites
+            if (idleSprites[currentFrame] != null) {
+                sprite = idleSprites[currentFrame];
+            }
+        }
     }
 
     @Override
@@ -59,12 +141,41 @@ public class Player extends Entity {
 
         // Update cooldowns
         updateCooldowns();
-    }
 
-    @Override
+        // Update animations
+        updateAnimation();
+    }    @Override
     public void draw(Graphics g) {
         if (sprite != null) {
-            g.drawImage(sprite, (int) (x - hitboxWidth / 2), (int) (y - hitboxHeight / 2), null);
+            Graphics2D g2d = (Graphics2D) g;
+            int drawX = (int) (x - hitboxWidth / 2);
+            int drawY = (int) (y - hitboxHeight / 2);
+
+            // Calculate sprite flipping based on both direction and gravity
+            boolean flipHorizontal = (hDirection == -1);  // Flip when facing left
+            boolean flipVertical = (swap == -1);          // Flip when gravity is inverted
+            
+            int spriteWidth = (int) hitboxWidth;
+            int spriteHeight = (int) hitboxHeight;
+            
+            // Adjust drawing position and dimensions based on flipping
+            int finalDrawX = drawX;
+            int finalDrawY = drawY;
+            int finalWidth = spriteWidth;
+            int finalHeight = spriteHeight;
+            
+            if (flipHorizontal) {
+                finalDrawX = drawX + spriteWidth;  // Move draw point to right edge
+                finalWidth = -spriteWidth;         // Negative width flips horizontally
+            }
+            
+            if (flipVertical) {
+                finalDrawY = drawY + spriteHeight; // Move draw point to bottom edge
+                finalHeight = -spriteHeight;       // Negative height flips vertically
+            }
+            
+            // Draw the sprite with calculated flipping
+            g2d.drawImage(sprite, finalDrawX, finalDrawY, finalWidth, finalHeight, null);
         }
     }
 
