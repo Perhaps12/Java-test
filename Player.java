@@ -34,17 +34,19 @@ public class Player extends Entity {
 
     // Combat
     private int[] cooldown = new int[99]; // Cooldowns for attacks
-    private boolean[] shot = new boolean[99]; // Track button presses for attacks
-
-    // Animation system
+    private boolean[] shot = new boolean[99]; // Track button presses for attacks // Animation system
     private BufferedImage[] idleSprites;
     private BufferedImage[] walkSprites;
+    private BufferedImage[] squashStretchSprites;
     private int currentFrame = 0;
     private int animationTimer = 0;
     private static final int IDLE_ANIMATION_SPEED = 10; // frames per sprite change
     private static final int WALK_ANIMATION_SPEED = 8; // frames per sprite change
     private boolean isWalking = false;
 
+    // Squash and stretch thresholds
+    private static final double SQUASH_VELOCITY_THRESHOLD = 6.0; 
+    private static final double STRETCH_VELOCITY_THRESHOLD = -6.0; 
     /**
      * Create a new player with position and sprite
      */
@@ -83,12 +85,45 @@ public class Player extends Entity {
                 System.out.println("Could not load walk sprite " + i + ": " + e.getMessage());
             }
         }
+
+        // Load squash and stretch sprites (sprite_0.png = squash, sprite_1.png =
+        // stretch)
+        squashStretchSprites = new BufferedImage[2];
+        for (int i = 0; i < 2; i++) {
+            try {
+                squashStretchSprites[i] = ImageIO
+                        .read(getClass()
+                                .getResourceAsStream("/Sprites/Character/squash and stretch/sprite_" + i + ".png"));
+            } catch (IOException | IllegalArgumentException e) {
+                System.out.println("Could not load squash/stretch sprite " + i + ": " + e.getMessage());
+            }
+        }
     }
 
     /**
      * Update animation frame based on player state
      */
     private void updateAnimation() {
+        // Check for squash and stretch based on vertical velocity
+        double verticalVelocity = velocity.getY();
+
+        // System.out.println(verticalVelocity);
+        // Squash and stretch take priority over other animations
+        if (verticalVelocity >= SQUASH_VELOCITY_THRESHOLD) {
+            // Squash when jumping up
+            if (squashStretchSprites[0] != null) {
+                sprite = squashStretchSprites[0]; // sprite_0.png squash
+            }
+            return;
+        } else if (verticalVelocity <= STRETCH_VELOCITY_THRESHOLD) {
+            // Stretch when falling fast
+            if (squashStretchSprites[1] != null) {
+                sprite = squashStretchSprites[1]; // sprite_1.png stretch
+            }
+            return;
+        }
+
+        // Normal animation logic when not squashing/stretching
         // Determine if player is walking based on movement
         boolean wasWalking = isWalking;
         isWalking = GameEngine.isKeyPressed(KeyEvent.VK_LEFT) || GameEngine.isKeyPressed(KeyEvent.VK_RIGHT);
@@ -144,7 +179,9 @@ public class Player extends Entity {
 
         // Update animations
         updateAnimation();
-    }    @Override
+    }
+
+    @Override
     public void draw(Graphics g) {
         if (sprite != null) {
             Graphics2D g2d = (Graphics2D) g;
@@ -152,28 +189,28 @@ public class Player extends Entity {
             int drawY = (int) (y - hitboxHeight / 2);
 
             // Calculate sprite flipping based on both direction and gravity
-            boolean flipHorizontal = (hDirection == -1);  // Flip when facing left
-            boolean flipVertical = (swap == -1);          // Flip when gravity is inverted
-            
+            boolean flipHorizontal = (hDirection == -1); // Flip when facing left
+            boolean flipVertical = (swap == -1); // Flip when gravity is inverted
+
             int spriteWidth = (int) hitboxWidth;
             int spriteHeight = (int) hitboxHeight;
-            
+
             // Adjust drawing position and dimensions based on flipping
             int finalDrawX = drawX;
             int finalDrawY = drawY;
             int finalWidth = spriteWidth;
             int finalHeight = spriteHeight;
-            
+
             if (flipHorizontal) {
-                finalDrawX = drawX + spriteWidth;  // Move draw point to right edge
-                finalWidth = -spriteWidth;         // Negative width flips horizontally
+                finalDrawX = drawX + spriteWidth; // Move draw point to right edge
+                finalWidth = -spriteWidth; // Negative width flips horizontally
             }
-            
+
             if (flipVertical) {
                 finalDrawY = drawY + spriteHeight; // Move draw point to bottom edge
-                finalHeight = -spriteHeight;       // Negative height flips vertically
+                finalHeight = -spriteHeight; // Negative height flips vertically
             }
-            
+
             // Draw the sprite with calculated flipping
             g2d.drawImage(sprite, finalDrawX, finalDrawY, finalWidth, finalHeight, null);
         }
@@ -201,10 +238,9 @@ public class Player extends Entity {
 
                 // Only trigger if it's a significant landing or no current shake
                 if (camera.shouldOverrideShake(shakeIntensity)) {
-                    camera.shake(shakeIntensity, shakeDuration, Camera.ShakeType.CIRCULAR);
-                }
+                    camera.shake(shakeIntensity, shakeDuration, Camera.ShakeType.CIRCULAR);                }
                 WaterBoundary waterBoundary = WaterBoundary.getInstance();
-                waterBoundary.createWaterEntry(x, 0.0, 20, swap);
+                waterBoundary.createWaterEntry(x, 0.0, 15, swap); // Reduced from 20 to 15 for better performance
             }
             velocity.setY(Math.max(-0.2, velocity.getY()));
             coyoteTime = 5;
@@ -317,7 +353,7 @@ public class Player extends Entity {
                 velocity.setY(-2);
                 dashCool = 45;
                 // Add small shake effect when starting dash
-                camera.shake(10, 6, Camera.ShakeType.RANDOM);
+                camera.shake(12, 8, Camera.ShakeType.RANDOM);
             }
         }
 
@@ -504,12 +540,10 @@ public class Player extends Entity {
                 x = tempX;
                 y = tempY;
                 shot[2] = true;
-                swap *= -1;
-
-                fallStartY = y; // Reset fall start position on swap so it doesn't trigger hard landing // Add
+                swap *= -1;                fallStartY = y; // Reset fall start position on swap so it doesn't trigger hard landing // Add
                                 // shake effect for character swap
                 Camera camera = Camera.getInstance();
-                waterBoundary.createWaterEntry(x, 0.0, 20, -swap);
+                waterBoundary.createWaterEntry(x, 0.0, 12, -swap); // Reduced from 20 to 12 for better performance
                 camera.shake(8, 12, Camera.ShakeType.CIRCULAR);
             }
         }

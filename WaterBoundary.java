@@ -14,9 +14,7 @@ import javax.imageio.ImageIO;
  * surface tension, waves, and particle effects.
  */
 public class WaterBoundary {
-    private static WaterBoundary instance;
-
-    // Water boundary properties
+    private static WaterBoundary instance;    // Water boundary properties
     private static final double WATER_LEVEL = 0.0; // Y coordinate of water surface (center line)
     private static final double WATER_DEPTH = 540.0; // How deep the water effect extends
     private static final int WATER_SEGMENTS = 150; // Number of segments for water surface
@@ -24,6 +22,10 @@ public class WaterBoundary {
     private ArrayList<WaterParticle> waterParticles;
     private ArrayList<WaterSplash> splashes;
     private long lastUpdateTime; // Player interaction tracking
+
+    // Performance optimization constants
+    private static final int MAX_PARTICLES = 150; // Maximum number of water particles
+    private static final int MAX_SPLASHES = 20; // Maximum number of splash effects
 
     // Water texture properties
     private BufferedImage waterTexture;
@@ -252,16 +254,21 @@ public class WaterBoundary {
         updateWaterParticles();
         updateSplashes(deltaTime);
         spreadWaves();
-    }
-
-    /**
+    }    /**
      * Create water entry effect when player crosses boundary
      */
     public void createWaterEntry(double playerX, double playerY, double impact, int gravitySwap) { // must be public for
                                                                                                    // player effects
-        splashes.add(new WaterSplash(playerX, WATER_LEVEL, impact * 0.8));
+        // Limit splash effects to prevent lag
+        if (splashes.size() < MAX_SPLASHES) {
+            splashes.add(new WaterSplash(playerX, WATER_LEVEL, impact * 0.8));
+        }
+        
         displaceWaterSegments(playerX, impact * 4.0, 60, gravitySwap);
-        createWaterParticles(playerX, WATER_LEVEL, impact * 0.8, (int) impact, gravitySwap);
+        
+        // Reduce particle count for character swaps to prevent lag
+        int particleCount = Math.min((int) impact, 15); // Cap at 15 particles instead of 20
+        createWaterParticles(playerX, WATER_LEVEL, impact * 0.8, particleCount, gravitySwap);
     }/*
       * Displace water segments around a point
       */
@@ -281,13 +288,15 @@ public class WaterBoundary {
                 segment.applyDisplacement(displacement);
             }
         }
-    }
-
-    /**
+    }    /**
      * Create water particles for splash effects
      */
     private void createWaterParticles(double centerX, double centerY, double intensity, int count, int gravitySwap) {
-        for (int i = 0; i < count; i++) {
+        // Enforce particle limit to prevent performance issues
+        int actualCount = Math.min(count, MAX_PARTICLES - waterParticles.size());
+        if (actualCount <= 0) return; // Skip if we're at the limit
+        
+        for (int i = 0; i < actualCount; i++) {
             // Random position spread around center
             double offsetX = (Math.random() - 0.5) * 25;
             double offsetY = (Math.random() - 0.5) * 15;
@@ -303,8 +312,8 @@ public class WaterBoundary {
                 vy = (Math.random() * intensity * 0.8 + intensity * 0.3); // Downward bias
             }
 
-            // Particle lifetime
-            double life = 60 + Math.random() * 90; // 1-2.5 seconds at 60fps
+            // Reduced particle lifetime for better performance
+            double life = 45 + Math.random() * 60; // 0.75-1.75 seconds instead of 1-2.5 seconds
 
             WaterParticle particle = new WaterParticle(
                     centerX + offsetX,
@@ -325,9 +334,7 @@ public class WaterBoundary {
         for (WaterSegment segment : waterSegments) {
             segment.update();
         }
-    }
-
-    /**
+    }    /**
      * Update all water particles
      */
     private void updateWaterParticles() {
@@ -336,13 +343,12 @@ public class WaterBoundary {
             WaterParticle particle = iterator.next();
             particle.update();
 
-            if (!particle.isAlive()) {
+            // Remove expired particles or if we're over the limit, remove older particles more aggressively
+            if (!particle.isAlive() || (waterParticles.size() > MAX_PARTICLES && particle.getOpacity() < 0.5)) {
                 iterator.remove();
             }
         }
-    }
-
-    /**
+    }    /**
      * Update all splash effects
      */
     private void updateSplashes(double deltaTime) {
@@ -351,7 +357,8 @@ public class WaterBoundary {
             WaterSplash splash = iterator.next();
             splash.update(deltaTime);
 
-            if (splash.isExpired()) {
+            // Remove expired splashes or limit total count for performance
+            if (splash.isExpired() || (splashes.size() > MAX_SPLASHES && splash.getOpacity() < 0.3)) {
                 iterator.remove();
             }
         }
@@ -571,13 +578,27 @@ public class WaterBoundary {
      */
     public boolean isPointInWater(double x, double y) {
         return Math.abs(y - WATER_LEVEL) < WATER_DEPTH / 2;
-    }
-
-    /**
+    }    /**
      * Get the number of active water particles
      */
     public int getParticleCount() {
         return waterParticles.size();
+    }
+
+    /**
+     * Get the number of active splash effects
+     */
+    public int getSplashCount() {
+        return splashes.size();
+    }
+
+    /**
+     * Get performance info for debugging
+     */
+    public String getPerformanceInfo() {
+        return String.format("Particles: %d/%d, Splashes: %d/%d", 
+                            waterParticles.size(), MAX_PARTICLES, 
+                            splashes.size(), MAX_SPLASHES);
     }
 
     /**

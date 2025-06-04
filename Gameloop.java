@@ -120,33 +120,33 @@ public class Gameloop extends Canvas implements Runnable, KeyListener, Component
         if (GameSettings.getInstance().isShowDebug()) {
             g.setStroke(new BasicStroke(1));
             g.setColor(Color.BLACK);
-            g.setFont(new Font("Arial", Font.PLAIN, 24));
+            // g.setFont(new Font("Arial", Font.PLAIN, 24));
 
-            int lineY = 30;
-            int lineHeight = 30;
+            // int lineY = 30;
+            // int lineHeight = 30;
 
-            if (GameSettings.getInstance().isShowFPS()) {
-                g.drawString("FPS: " + fps, 13, lineY);
-                lineY += lineHeight;
-            }
+            // if (GameSettings.getInstance().isShowFPS()) {
+            //     g.drawString("FPS: " + fps, 13, lineY);
+            //     lineY += lineHeight;
+            // }
 
-            g.drawString("Projectiles: " + GameEngine.getProjectiles().size(), 13, lineY);
-            lineY += lineHeight;
+            // g.drawString("Projectiles: " + GameEngine.getProjectiles().size(), 13, lineY);
+            // lineY += lineHeight;
 
-            if (!GameEngine.getNpcs().isEmpty()) {
-                g.drawString("NPCs: " + GameEngine.getNpcs().size(), 13, lineY);
-                lineY += lineHeight;
-            }
+            // if (!GameEngine.getNpcs().isEmpty()) {
+            //     g.drawString("NPCs: " + GameEngine.getNpcs().size(), 13, lineY);
+            //     lineY += lineHeight;
+            // }
 
-            // Display active keys for debugging
-            g.drawString("Active Keys: " + GameEngine.getKeys().size(), 13, lineY);
-            lineY += lineHeight;
+            // // Display active keys for debugging
+            // g.drawString("Active Keys: " + GameEngine.getKeys().size(), 13, lineY);
+            // lineY += lineHeight;
 
-            // Display resolution and scaling info
-            g.drawString("Resolution: " + settings.getWidth() + "x" + settings.getHeight(), 13, lineY);
-            lineY += lineHeight;
-            g.drawString("Scale: " + String.format("%.2f", settings.getScaleX()) + "x"
-                    + String.format("%.2f", settings.getScaleY()), 13, lineY);
+            // // Display resolution and scaling info
+            // g.drawString("Resolution: " + settings.getWidth() + "x" + settings.getHeight(), 13, lineY);
+            // lineY += lineHeight;
+            // g.drawString("Scale: " + String.format("%.2f", settings.getScaleX()) + "x"
+            //         + String.format("%.2f", settings.getScaleY()), 13, lineY);
         }
 
         // Clean up
