@@ -1,20 +1,15 @@
 import java.awt.*;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-
 import javax.imageio.ImageIO;
+import java.io.IOException;
+import java.util.*;
 
 /**
- * WaterBoundary class that creates a realistic liquid water effect
- * acting as the boundary between top and bottom game sections.
- * Features realistic physics simulation with water displacement,
- * surface tension, waves, and particle effects.
+ * WaterBoundary class that manages water effects and physics
  */
 public class WaterBoundary {
-    private static WaterBoundary instance;    // Water boundary properties
+    private static WaterBoundary instance; // Water boundary properties
     private static final double WATER_LEVEL = 0.0; // Y coordinate of water surface (center line)
     private static final double WATER_DEPTH = 540.0; // How deep the water effect extends
     private static final int WATER_SEGMENTS = 150; // Number of segments for water surface
@@ -25,11 +20,18 @@ public class WaterBoundary {
 
     // Performance optimization constants
     private static final int MAX_PARTICLES = 150; // Maximum number of water particles
-    private static final int MAX_SPLASHES = 20; // Maximum number of splash effects
-
-    // Water texture properties
+    private static final int MAX_SPLASHES = 20; // Maximum number of splash effects // Water texture properties
     private BufferedImage waterTexture;
-    private boolean textureLoaded = false;
+    private boolean textureLoaded = false; // Frame timing for shimmer effect
+    // animations)
+    private int shimmerAnimationTimer = 0;
+    private static final int SHIMMER_ANIMATION_SPEED = 6; // Update every 8 frames to match character walk cycle
+    private int shimmerFrame = 0; // Frame counter
+
+    // Store random pattern for shimmer effect that only updates every few frames
+    private boolean[][] shimmerPattern;
+    private int shimmerPatternWidth = 0;
+    private int shimmerPatternHeight = 0;
 
     /**
      * Individual water segment for random surface simulation
@@ -45,7 +47,7 @@ public class WaterBoundary {
         public double displacementDecay; // Random water properties
         private static final double MAX_RANDOM_OFFSET = 1.1; // Increased for more visible movement
         private static final double RANDOM_SPEED = 0.05; // Increased speed of random movement
-        private static final double DISPLACEMENT_DECAY = 0.95; // How quickly displacement fades (slower decay)
+        private static final double DISPLACEMENT_DECAY = 0.95; // How quickly displacement decays
         private static final double MAX_DISPLACEMENT = 30.0; // Increased maximum displacement
 
         public WaterSegment(double x, double y) {
@@ -85,16 +87,12 @@ public class WaterBoundary {
         }
 
         public void applyDisplacement(double displacementAmount) {
-            // Add player interaction displacement with some randomness
-            double oldDisplacement = displacement;
+            // double oldDisplacement = displacement;
             displacement += displacementAmount * (0.8 + Math.random() * 0.4);
             displacement = Math.max(-MAX_DISPLACEMENT, Math.min(MAX_DISPLACEMENT, displacement));
 
-            // Debug output for significant displacements
-            if (Math.abs(displacementAmount) > 1.0) {
-                System.out.println("Segment at X: " + x + " displaced by " + displacementAmount +
-                        " (old: " + oldDisplacement + ", new: " + displacement + ")");
-            }
+            // System.out.println("segment X: " + x + " displaced " + displacementAmount +
+            // " (old: " + oldDisplacement + ", new: " + displacement + ")");
         }
     }
 
@@ -195,6 +193,10 @@ public class WaterBoundary {
         splashes = new ArrayList<>();
         lastUpdateTime = System.currentTimeMillis();
 
+        // Initialize frame-based timing for shimmer effect
+        shimmerAnimationTimer = 0;
+        shimmerFrame = 0;
+
         initializeWaterSegments();
         loadWaterTexture();
     }
@@ -250,11 +252,21 @@ public class WaterBoundary {
         double deltaTime = (currentTime - lastUpdateTime) / 1000.0;
         lastUpdateTime = currentTime;
 
+        // Update frame-based timing for shimmer effect (same pattern as Player
+        // animation)
+        shimmerAnimationTimer++;
+        if (shimmerAnimationTimer >= SHIMMER_ANIMATION_SPEED) {
+            shimmerAnimationTimer = 0;
+            shimmerFrame++;
+        }
+
         updateWaterSegments();
         updateWaterParticles();
         updateSplashes(deltaTime);
         spreadWaves();
-    }    /**
+    }
+
+    /**
      * Create water entry effect when player crosses boundary
      */
     public void createWaterEntry(double playerX, double playerY, double impact, int gravitySwap) { // must be public for
@@ -263,41 +275,65 @@ public class WaterBoundary {
         if (splashes.size() < MAX_SPLASHES) {
             splashes.add(new WaterSplash(playerX, WATER_LEVEL, impact * 0.8));
         }
-        
+
         displaceWaterSegments(playerX, impact * 4.0, 60, gravitySwap);
-        
+
         // Reduce particle count for character swaps to prevent lag
         int particleCount = Math.min((int) impact, 15); // Cap at 15 particles instead of 20
         createWaterParticles(playerX, WATER_LEVEL, impact * 0.8, particleCount, gravitySwap);
-    }/*
-      * Displace water segments around a point
-      */
+    } /*
+       * Displace water segments around a point with wave-like propagation
+       */
 
     private void displaceWaterSegments(double centerX, double force, double radius, int gravitySwap) {
         for (WaterSegment segment : waterSegments) {
             double distance = Math.abs(segment.x - centerX);
             if (distance < radius) {
-                // Calculate displacement based on distance (closer more displacement)
+                // Calculate displacement based on distance (closer = more displacement)
                 double falloff = 1.0 - (distance / radius);
                 double displacement = force * falloff * falloff; // Quadratic falloff
 
                 // Mirror displacement direction based on gravity swap
-                displacement *= gravitySwap; // Positive displacement since when swapping it will invert gravity
-                // before it actually displaces, so when landing we will apply a negative swap
+                displacement *= gravitySwap;
 
                 segment.applyDisplacement(displacement);
             }
         }
-    }    /**
+
+        // Add secondary wave effects for more realistic water behavior
+        // Create outward ripples from the impact point
+        for (int ripple = 1; ripple <= 2; ripple++) {
+            double rippleRadius = radius * (1.0 + ripple * 0.3); // Expanding ripples
+            double rippleForce = force * (0.3 / ripple); // Diminishing force
+
+            for (WaterSegment segment : waterSegments) {
+                double distance = Math.abs(segment.x - centerX);
+                if (distance > radius && distance < rippleRadius) {
+                    double rippleFalloff = 1.0 - ((distance - radius) / (rippleRadius - radius));
+                    double rippleDisplacement = rippleForce * rippleFalloff * gravitySwap * 0.5;
+
+                    // Alternate the direction for wave-like effect
+                    if (ripple % 2 == 0) {
+                        rippleDisplacement *= -0.6; // Opposite direction, reduced amplitude
+                    }
+
+                    segment.applyDisplacement(rippleDisplacement);
+                }
+            }
+        }
+    }
+
+    /**
      * Create water particles for splash effects
      */
     private void createWaterParticles(double centerX, double centerY, double intensity, int count, int gravitySwap) {
         // Enforce particle limit to prevent performance issues
         int actualCount = Math.min(count, MAX_PARTICLES - waterParticles.size());
-        if (actualCount <= 0) return; // Skip if we're at the limit
-        
+        if (actualCount <= 0)
+            return; // Skip if we're at the limit
+
         for (int i = 0; i < actualCount; i++) {
-            // Random position spread around center
+            // Random position spread around centers
             double offsetX = (Math.random() - 0.5) * 25;
             double offsetY = (Math.random() - 0.5) * 15;
 
@@ -334,7 +370,9 @@ public class WaterBoundary {
         for (WaterSegment segment : waterSegments) {
             segment.update();
         }
-    }    /**
+    }
+
+    /**
      * Update all water particles
      */
     private void updateWaterParticles() {
@@ -343,12 +381,15 @@ public class WaterBoundary {
             WaterParticle particle = iterator.next();
             particle.update();
 
-            // Remove expired particles or if we're over the limit, remove older particles more aggressively
+            // Remove expired particles or if we're over the limit, remove older particles
+            // more aggressively
             if (!particle.isAlive() || (waterParticles.size() > MAX_PARTICLES && particle.getOpacity() < 0.5)) {
                 iterator.remove();
             }
         }
-    }    /**
+    }
+
+    /**
      * Update all splash effects
      */
     private void updateSplashes(double deltaTime) {
@@ -365,32 +406,54 @@ public class WaterBoundary {
     }
 
     /**
-     * Create random wave patterns between segments
+     * Create wave-like displacement propagation between segments
      */
     private void spreadWaves() {
         if (waterSegments.size() < 2)
             return;
 
-        // Create random wave influences between neighboring segments
+        // First pass propagate displacement between neighboring segments
         for (int i = 1; i < waterSegments.size() - 1; i++) {
             WaterSegment current = waterSegments.get(i);
             WaterSegment left = waterSegments.get(i - 1);
             WaterSegment right = waterSegments.get(i + 1);
 
-            // Add slight influence from neighboring segments for more wave-like patterns
-            if (Math.random() < 0.02) { // 2% chance per frame
-                double influence = ((left.randomOffset + right.randomOffset) / 2) * 0.1;
-                current.displacement += influence;
+            // Displacement difference between neighbors
+            double leftDiff = left.displacement - current.displacement;
+            double rightDiff = right.displacement - current.displacement;
+
+            // Propagate displacement based on neighbors
+            // Basically wave physics
+            double propagationForce = (leftDiff + rightDiff) * 0.15;
+            current.displacement += propagationForce;
+
+            current.displacement *= 0.98; // damp
+        }
+
+        // Second pass: smooth out sharp displacement differences
+        for (int i = 1; i < waterSegments.size() - 1; i++) {
+            WaterSegment current = waterSegments.get(i);
+            WaterSegment left = waterSegments.get(i - 1);
+            WaterSegment right = waterSegments.get(i + 1);
+
+            // Average displacement with neighbors for smoother wave propagation
+            double averageDisplacement = (left.displacement + current.displacement + right.displacement) / 3.0;
+            double smoothingFactor = 0.05; // How much to smooth
+            current.displacement += (averageDisplacement - current.displacement) * smoothingFactor;
+        }
+
+        // Add subtle random disturbances for natural wave movement (reduced frequency)
+        for (int i = 1; i < waterSegments.size() - 1; i++) {
+            WaterSegment current = waterSegments.get(i);
+
+            // Reduced random disturbances since we have better wave propagation
+            if (Math.random() < 0.01) { // Reduced from 0.03 to 0.01
+                current.displacement += (Math.random() - 0.5) * 0.3; // Reduced amplitude
             }
 
-            // Add random disturbances for natural wave movement
-            if (Math.random() < 0.03) { // 3% chance per segment per frame
-                current.displacement += (Math.random() - 0.5) * 0.5;
-            }
-
-            // Add occasional larger disturbances for more interesting patterns
-            if (Math.random() < 0.005) { // 0.5% chance for larger disturbance
-                current.displacement += (Math.random() - 0.5) * 1.2;
+            // Very occasional larger disturbances
+            if (Math.random() < 0.002) { // Reduced from 0.005 to 0.002
+                current.displacement += (Math.random() - 0.5) * 0.8; // Reduced amplitude
             }
         }
     }
@@ -399,8 +462,10 @@ public class WaterBoundary {
      * Draw the water boundary effect
      */
     public void draw(Graphics2D g) {
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        // Use pixelated rendering for retro effect
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
 
         drawWaterSurface(g);
         drawWaterParticles(g);
@@ -414,42 +479,37 @@ public class WaterBoundary {
     private void drawWaterSurface(Graphics g2d) {
         Graphics2D g = (Graphics2D) g2d;
 
+        // Set pixelated rendering for water surface
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+
         if (waterSegments.size() < 2)
             return;
 
-        // Create water surface path
+        // Create pixelated water surface using stepped lines instead of smooth curves
         GeneralPath waterPath = new GeneralPath();
 
         // Start path
         WaterSegment first = waterSegments.get(0);
         waterPath.moveTo(first.x, first.y);
 
-        // Create smooth curve through all segments using quadratic curves
+        // Create stepped/pixelated surface instead of smooth curves
         for (int i = 1; i < waterSegments.size(); i++) {
             WaterSegment current = waterSegments.get(i);
 
-            if (i == waterSegments.size() - 1) {
-                // Last segment
-                waterPath.lineTo(current.x, current.y);
-            } else {
-                WaterSegment next = waterSegments.get(i + 1); // smooth curve to next segment
-                double controlX = current.x;
-                double controlY = current.y;
-                double endX = (current.x + next.x) / 2;
-                double endY = (current.y + next.y) / 2;
+            // Round Y position to create pixelated steps
+            double pixelatedY = Math.round(current.y / 2) * 2;
+            waterPath.lineTo(current.x, pixelatedY);
+        }
 
-                waterPath.quadTo(controlX, controlY, endX, endY);
-            }
-        } // Close path for filling (extend down for water body)
+        // Close path for filling (extend down for water body)
         WaterSegment last = waterSegments.get(waterSegments.size() - 1);
         waterPath.lineTo(last.x, WATER_LEVEL + WATER_DEPTH);
         waterPath.lineTo(first.x, WATER_LEVEL + WATER_DEPTH);
-        waterPath.closePath(); // Fill water body with texture or gradient fallback
-        if (textureLoaded && waterTexture != null) {
-            // Create a texture paint with the pink water texture
-            int textureWidth = waterTexture.getWidth();
-            int textureHeight = waterTexture.getHeight();
+        waterPath.closePath();
 
+        // Fill water body with texture or gradient fallback
+        if (textureLoaded && waterTexture != null) {
             // Get the actual water area bounds - entire level width
             GameSettings settings = GameSettings.getInstance();
             double levelLeft = settings.getLevelLeft();
@@ -470,29 +530,51 @@ public class WaterBoundary {
 
             g.setComposite(originalComposite);
         } else {
-            // Fallback to gradient if texture loading failed
-            GradientPaint gradient = new GradientPaint(
-                    0, (float) WATER_LEVEL, new Color(255, 100, 150, 120),
-                    0, (float) (WATER_LEVEL + WATER_DEPTH), new Color(200, 50, 100, 180));
-            g.setPaint(gradient);
-            g.fill(waterPath);
-        } // Draw water surface line
-        g.setColor(new Color(240, 142, 254, 200));
-        g.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            // Fallback to pixelated gradient if texture loading failed
+            int gradientSteps = 8; // Number of distinct color bands
+            double stepHeight = WATER_DEPTH / gradientSteps;
 
-        GeneralPath surfaceLine = new GeneralPath();
-        surfaceLine.moveTo(first.x, first.y);
-        for (int i = 1; i < waterSegments.size(); i++) {
-            WaterSegment current = waterSegments.get(i);
-            surfaceLine.lineTo(current.x, current.y);
+            for (int i = 0; i < gradientSteps; i++) {
+                float ratio = (float) i / gradientSteps;
+                int red = (int) (255 - ratio * 55); // 255 to 200
+                int green = (int) (100 - ratio * 50); // 100 to 50
+                int blue = (int) (150 - ratio * 50); // 150 to 100
+                int alpha = (int) (120 + ratio * 60); // 120 to 180
+
+                Color bandColor = new Color(red, green, blue, alpha);
+                g.setColor(bandColor);
+
+                Rectangle2D band = new Rectangle2D.Double(
+                        first.x, WATER_LEVEL + i * stepHeight,
+                        last.x - first.x, stepHeight + 1 // +1 to avoid gaps
+                );
+                g.fill(band);
+            }
         }
-        g.draw(surfaceLine);
+
+        // Draw pixelated water surface line
+        g.setColor(new Color(240, 142, 254, 200));
+        g.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER));
+
+        // Draw stepped surface line
+        for (int i = 0; i < waterSegments.size() - 1; i++) {
+            WaterSegment current = waterSegments.get(i);
+            WaterSegment next = waterSegments.get(i + 1);
+
+            // Round Y positions for pixelated effect
+            double y1 = Math.round(current.y / 2) * 2;
+            double y2 = Math.round(next.y / 2) * 2;
+            g.drawLine((int) current.x, (int) y1, (int) next.x, (int) y2);
+        }
     }
 
     /**
      * Draw water particles
      */
     private void drawWaterParticles(Graphics2D g) {
+        // Set pixelated rendering for particles
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+
         for (WaterParticle particle : waterParticles) {
             double opacity = particle.getOpacity();
             if (opacity <= 0)
@@ -502,16 +584,33 @@ public class WaterBoundary {
             AlphaComposite originalComposite = (AlphaComposite) g.getComposite();
             g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) opacity));
 
-            // Draw particle as small circle with enhanced visibility
+            // Draw particle as pixelated squares instead of circles
             g.setColor(particle.color);
-            int size = (int) (6 + opacity * 6); // Increased size for better visibility
-            g.fillOval((int) (particle.x - size / 2), (int) (particle.y - size / 2), size, size);
+            int size = (int) (4 + opacity * 4); // Reduced size for pixel effect
 
-            // Add a white highlight for better visibility
-            g.setColor(new Color(255, 255, 255, (int) (opacity * 100)));
-            int highlightSize = size / 2;
-            g.fillOval((int) (particle.x - highlightSize / 2), (int) (particle.y - highlightSize / 2), highlightSize,
-                    highlightSize);
+            // Make size even for clean pixel squares
+            size = (size / 2) * 2;
+            if (size < 2)
+                size = 2;
+
+            int x = (int) particle.x - size / 2;
+            int y = (int) particle.y - size / 2;
+
+            // Round to pixel grid for crisp edges
+            x = (x / 2) * 2;
+            y = (y / 2) * 2;
+
+            g.fillRect(x, y, size, size);
+
+            // Add a white highlight pixel in the center
+            g.setColor(new Color(255, 255, 255, (int) (opacity * 150)));
+            int highlightSize = Math.max(2, size / 2);
+            highlightSize = (highlightSize / 2) * 2; // Make even
+
+            int highlightX = x + (size - highlightSize) / 2;
+            int highlightY = y + (size - highlightSize) / 2;
+
+            g.fillRect(highlightX, highlightY, highlightSize, highlightSize);
 
             g.setComposite(originalComposite);
         }
@@ -521,6 +620,9 @@ public class WaterBoundary {
      * Draw splash effects
      */
     private void drawSplashes(Graphics2D g) {
+        // Set pixelated rendering for splashes
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+
         for (WaterSplash splash : splashes) {
             double opacity = splash.getOpacity();
             if (opacity <= 0)
@@ -528,17 +630,27 @@ public class WaterBoundary {
 
             // Set splash transparency
             AlphaComposite originalComposite = (AlphaComposite) g.getComposite();
-            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) opacity)); // Draw splash as
-                                                                                                  // expanding ring
-            g.setColor(new Color(240, 142, 254, (int) (opacity * 100)));
-            g.setStroke(new BasicStroke(2.0f * (float) opacity, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) opacity));
 
-            int diameter = (int) (splash.radius * 2);
-            g.drawOval(
-                    (int) (splash.centerX - splash.radius),
-                    (int) (splash.centerY - splash.radius),
-                    diameter,
-                    diameter);
+            // Draw splash as pixelated ring using rectangles
+            g.setColor(new Color(240, 142, 254, (int) (opacity * 100)));
+
+            int radius = (int) splash.radius;
+            int thickness = Math.max(2, (int) (4 * opacity)); // Pixelated thickness
+
+            // Draw pixelated ring by drawing small rectangles around the circumference
+            int segments = Math.max(8, radius / 3); // Number of segments based on radius
+            for (int i = 0; i < segments; i++) {
+                double angle = (2 * Math.PI * i) / segments;
+                int x = (int) (splash.centerX + Math.cos(angle) * radius);
+                int y = (int) (splash.centerY + Math.sin(angle) * radius);
+
+                // Round to pixel grid
+                x = (x / 2) * 2;
+                y = (y / 2) * 2;
+
+                g.fillRect(x - thickness / 2, y - thickness / 2, thickness, thickness);
+            }
 
             g.setComposite(originalComposite);
         }
@@ -548,21 +660,60 @@ public class WaterBoundary {
      * Draw water depth and reflection effects
      */
     private void drawWaterDepth(Graphics2D g) {
+        // Set pixelated rendering for water depth effects
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+
         GameSettings settings = GameSettings.getInstance();
         double levelLeft = settings.getLevelLeft();
-        double levelRight = settings.getLevelRight(); // Draw subtle reflection/shimmer lines
-        g.setColor(new Color(255, 200, 230, 40));
-        g.setStroke(new BasicStroke(1.0f));
+        double levelRight = settings.getLevelRight(); // Draw pixelated reflection/shimmer lines using rectangles
+                                                      // instead of smooth
+        // lines
 
-        for (int i = 0; i < 5; i++) {
+        // Calculate pattern dimensions
+        int segmentWidth = 12;
+        int patternWidth = (int) Math.ceil((levelRight - levelLeft) / segmentWidth);
+        int patternHeight = settings.getLevelHeight() / 10;
+
+        // Initialize or regenerate pattern every few frames
+        if (shimmerPattern == null || shimmerAnimationTimer == 0 ||
+                shimmerPatternWidth != patternWidth || shimmerPatternHeight != patternHeight) {
+            shimmerPatternWidth = patternWidth;
+            shimmerPatternHeight = patternHeight;
+            shimmerPattern = new boolean[patternHeight][patternWidth];
+
+            // Generate new random pattern
+            for (int i = 0; i < patternHeight; i++) {
+                for (int j = 0; j < patternWidth; j++) {
+                    shimmerPattern[i][j] = Math.random() > 0.4; // chance to show segment
+                }
+            }
+        }
+
+        // Draw using the stored pattern
+        for (int i = 0; i < Math.min(patternHeight, shimmerPattern.length); i++) {
+            if (30 - i <= 0) {
+                break; // Stop when transparency is too low
+            }
+            g.setColor(new Color(255, 200, 230, (30 - i ))); // Fading shimmer effect
             double y = WATER_LEVEL + 10 + i * 8;
-            double offset = Math.sin(System.currentTimeMillis() * 0.002 + i) * 3;
+            double offsetX = Math.sin(shimmerFrame * 0.2 + i) * 3;
 
-            g.drawLine(
-                    (int) levelLeft,
-                    (int) (y + offset),
-                    (int) levelRight,
-                    (int) (y + offset));
+            // Round offset
+            offsetX = Math.round(offsetX / 2) * 2;
+            double offsetY = Math.sin(shimmerFrame * 0.6 + i) * 3;
+            int lineY = (int) (y + offsetY);
+            int lineHeight = 2; 
+
+            int segmentIndex = 0;
+            for (int x = (int) levelLeft; x < levelRight
+                    && segmentIndex < shimmerPattern[i].length; x += segmentWidth, segmentIndex++) {
+                // Use the stored random pattern that only updates every few frames
+                if (shimmerPattern[i][segmentIndex]) {
+                    // Apply horizontal offset to create shimmering effect
+                    int shimmerX = (int) (x + offsetX);
+                    g.fillRect(shimmerX, lineY, segmentWidth, lineHeight);
+                }
+            }
         }
     }
 
@@ -578,7 +729,9 @@ public class WaterBoundary {
      */
     public boolean isPointInWater(double x, double y) {
         return Math.abs(y - WATER_LEVEL) < WATER_DEPTH / 2;
-    }    /**
+    }
+
+    /**
      * Get the number of active water particles
      */
     public int getParticleCount() {
@@ -590,15 +743,6 @@ public class WaterBoundary {
      */
     public int getSplashCount() {
         return splashes.size();
-    }
-
-    /**
-     * Get performance info for debugging
-     */
-    public String getPerformanceInfo() {
-        return String.format("Particles: %d/%d, Splashes: %d/%d", 
-                            waterParticles.size(), MAX_PARTICLES, 
-                            splashes.size(), MAX_SPLASHES);
     }
 
     /**
@@ -622,9 +766,8 @@ public class WaterBoundary {
 
     // createWaterParticles(0, 0, 10.0, 20);
     // createWaterParticles(100, 0, 8.0, 15);
-    // createWaterParticles(-100, 0, 8.0, 15);
-
-    // splashes.add(new WaterSplash(0, WATER_LEVEL, 5.0));
+    // createWaterParticles(-100, 0, 8.0, 15); // splashes.add(new WaterSplash(0,
+    // WATER_LEVEL, 5.0));
     // displaceWaterSegments(0, 5.0, 100);
     // }
 }

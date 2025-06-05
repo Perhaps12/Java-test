@@ -49,7 +49,7 @@ public class Projectile extends Entity {
             }
             // Player clone
             case 5 -> {
-                spritePath = "/Sprites/friendlinessPellet.png";
+                spritePath = "/Sprites/O-4.png";
                 width = 50;
                 height = 74;
             }

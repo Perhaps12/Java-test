@@ -45,8 +45,9 @@ public class Player extends Entity {
     private boolean isWalking = false;
 
     // Squash and stretch thresholds
-    private static final double SQUASH_VELOCITY_THRESHOLD = 6.0; 
-    private static final double STRETCH_VELOCITY_THRESHOLD = -6.0; 
+    private static final double SQUASH_VELOCITY_THRESHOLD = 6.0;
+    private static final double STRETCH_VELOCITY_THRESHOLD = -6.0;
+
     /**
      * Create a new player with position and sprite
      */
@@ -106,10 +107,16 @@ public class Player extends Entity {
     private void updateAnimation() {
         // Check for squash and stretch based on vertical velocity
         double verticalVelocity = velocity.getY();
+        double horizontalVelocity = velocity.getX();
+
+        // System.out.println(horizontalVelocity);
 
         // System.out.println(verticalVelocity);
         // Squash and stretch take priority over other animations
-        if (verticalVelocity >= SQUASH_VELOCITY_THRESHOLD) {
+        if (swap == -1) { // Inverted gravity means we have to change sign
+            verticalVelocity *= -1;
+        }
+        if (verticalVelocity >= SQUASH_VELOCITY_THRESHOLD || Math.abs(horizontalVelocity) > 7) {
             // Squash when jumping up
             if (squashStretchSprites[0] != null) {
                 sprite = squashStretchSprites[0]; // sprite_0.png squash
@@ -136,10 +143,11 @@ public class Player extends Entity {
 
         // Update animation timer
         animationTimer++;
-
-        if (isWalking) {
-            // Walking animation
-            if (animationTimer >= WALK_ANIMATION_SPEED) {
+        if (isTouchingGround()) {
+            
+            if (isWalking) {
+                // Walking animation
+                if (animationTimer >= WALK_ANIMATION_SPEED) {
                 animationTimer = 0;
                 currentFrame = (currentFrame + 1) % walkSprites.length;
             }
@@ -158,8 +166,9 @@ public class Player extends Entity {
                 sprite = idleSprites[currentFrame];
             }
         }
+        }
     }
-
+    
     @Override
     public void update() {
         // Process attacks
@@ -238,7 +247,8 @@ public class Player extends Entity {
 
                 // Only trigger if it's a significant landing or no current shake
                 if (camera.shouldOverrideShake(shakeIntensity)) {
-                    camera.shake(shakeIntensity, shakeDuration, Camera.ShakeType.CIRCULAR);                }
+                    camera.shake(shakeIntensity, shakeDuration, Camera.ShakeType.CIRCULAR);
+                }
                 WaterBoundary waterBoundary = WaterBoundary.getInstance();
                 waterBoundary.createWaterEntry(x, 0.0, 15, swap); // Reduced from 20 to 15 for better performance
             }
@@ -300,9 +310,7 @@ public class Player extends Entity {
 
             // Movement
             acceleration.setX(acceleration.getX() + 1.2);
-        }
-
-        // Jumping logic
+        }        // Jumping logic
         if (GameEngine.isKeyPressed(KeyEvent.VK_UP)) {
             // Wall jumps
             if (isTouchingLeftWall() && !jumped && velocity2.getY() <= 8) {
@@ -311,18 +319,26 @@ public class Player extends Entity {
                 hDirection2 = -1;
                 velocity2.setX(15);
                 jumped = true;
+                // Reset fall tracking for wall jump
+                wasFalling = false;
+                fallStartY = y;
             } else if (isTouchingRightWall() && !jumped && velocity2.getY() <= 8) {
                 y -= 3 * swap;
                 velocity.setY(14.5);
                 hDirection2 = 1;
                 velocity2.setX(15);
                 jumped = true;
-            }
-            // Regular jump - must be touching ground or in coyote time
+                // Reset fall tracking for wall jump
+                wasFalling = false;
+                fallStartY = y;
+            }            // Regular jump - must be touching ground or in coyote time
             else if (coyoteTime > 0 && !jumped && velocity2.getY() <= 8) {
                 y -= 3 * swap;
                 velocity.setY(16);
                 jumped = true;
+                // Reset fall tracking for regular jump
+                wasFalling = false;
+                fallStartY = y;
             }
             // Double jump
             else if (airJump && !jumped && velocity2.getY() <= 8) {
@@ -330,6 +346,9 @@ public class Player extends Entity {
                 velocity.setY(14);
                 jumped = true;
                 airJump = false;
+                // Reset fall tracking for double jump
+                wasFalling = false;
+                fallStartY = y;
             }
 
             // Hold up to jump higher
@@ -540,8 +559,9 @@ public class Player extends Entity {
                 x = tempX;
                 y = tempY;
                 shot[2] = true;
-                swap *= -1;                fallStartY = y; // Reset fall start position on swap so it doesn't trigger hard landing // Add
-                                // shake effect for character swap
+                swap *= -1;
+                fallStartY = y; // Reset fall start position on swap so it doesn't trigger hard landing // Add
+                // shake effect for character swap
                 Camera camera = Camera.getInstance();
                 waterBoundary.createWaterEntry(x, 0.0, 12, -swap); // Reduced from 20 to 12 for better performance
                 camera.shake(8, 12, Camera.ShakeType.CIRCULAR);

@@ -51,7 +51,7 @@ public class Level {
      */
     private void createDefaultWalls() {
         int halfHeight = levelHeight / 2;
-        int centerWallThickness = 10;
+        int centerWallThickness = 1;
 
         // Create border walls positioned at the screen edges for proper playable area
         walls.add(new Wall(-wallThickness, // left

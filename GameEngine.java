@@ -109,13 +109,20 @@ public class GameEngine {
         Graphics2D g2d = (Graphics2D) g;
 
         // Draw fixed background texture (before camera transform so it doesn't move)
-        BackgroundRenderer.getInstance().drawBackground(g2d);
-
-        // Apply camera transform for world objects
+        BackgroundRenderer.getInstance().drawBackground(g2d); // Apply camera transform for world objects
         Camera.getInstance().applyTransform(g2d);// Draw level (walls and background)
         if (currentLevel != null) {
             currentLevel.drawWalls(g);
-        } // Draw water boundary effect (behind everything else)
+        }
+
+        // Draw clone character under water effects (if it exists)
+        for (Npc npc : npcs) {
+            if (npc.getID() == 1) { // Clone character
+                npc.draw(g);
+            }
+        }
+
+        // Draw water boundary effect (behind everything else except clone)
         WaterBoundary.getInstance().draw(g2d);
 
         // Draw player
@@ -123,9 +130,11 @@ public class GameEngine {
             player.draw(g);
         }
 
-        // Draw NPCs
+        // Draw other NPCs (not the clone)
         for (Npc npc : npcs) {
-            npc.draw(g);
+            if (npc.getID() != 1) { // All NPCs except clone
+                npc.draw(g);
+            }
         } // Draw projectiles
         for (Projectile p : projectiles) {
             p.draw(g);
