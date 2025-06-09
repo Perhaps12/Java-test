@@ -247,11 +247,9 @@ public class Npc extends Entity {
             if (flipVertical) {
                 finalDrawY = drawY + spriteHeight; // Move draw point to bottom edge
                 finalHeight = -spriteHeight; // Negative height flips vertically
-            }
-
-            // Apply transparency to make clone more transparent
+            }            // Apply transparency to make clone more transparent
             AlphaComposite originalComposite = (AlphaComposite) g2d.getComposite();
-            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f)); // 60% opacity
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.6f)); // 60% opacity
 
             // Draw the sprite with calculated flipping
             g2d.drawImage(sprite, finalDrawX, finalDrawY, finalWidth, finalHeight, null);

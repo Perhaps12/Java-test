@@ -144,31 +144,31 @@ public class Player extends Entity {
         // Update animation timer
         animationTimer++;
         if (isTouchingGround()) {
-            
+
             if (isWalking) {
                 // Walking animation
                 if (animationTimer >= WALK_ANIMATION_SPEED) {
-                animationTimer = 0;
-                currentFrame = (currentFrame + 1) % walkSprites.length;
+                    animationTimer = 0;
+                    currentFrame = (currentFrame + 1) % walkSprites.length;
+                }
+                // Use walk sprites
+                if (walkSprites[currentFrame] != null) {
+                    sprite = walkSprites[currentFrame];
+                }
+            } else {
+                // Idle animation
+                if (animationTimer >= IDLE_ANIMATION_SPEED) {
+                    animationTimer = 0;
+                    currentFrame = (currentFrame + 1) % idleSprites.length;
+                }
+                // Use idle sprites
+                if (idleSprites[currentFrame] != null) {
+                    sprite = idleSprites[currentFrame];
+                }
             }
-            // Use walk sprites
-            if (walkSprites[currentFrame] != null) {
-                sprite = walkSprites[currentFrame];
-            }
-        } else {
-            // Idle animation
-            if (animationTimer >= IDLE_ANIMATION_SPEED) {
-                animationTimer = 0;
-                currentFrame = (currentFrame + 1) % idleSprites.length;
-            }
-            // Use idle sprites
-            if (idleSprites[currentFrame] != null) {
-                sprite = idleSprites[currentFrame];
-            }
-        }
         }
     }
-    
+
     @Override
     public void update() {
         // Process attacks
@@ -214,11 +214,13 @@ public class Player extends Entity {
                 finalDrawX = drawX + spriteWidth; // Move draw point to right edge
                 finalWidth = -spriteWidth; // Negative width flips horizontally
             }
-
             if (flipVertical) {
                 finalDrawY = drawY + spriteHeight; // Move draw point to bottom edge
                 finalHeight = -spriteHeight; // Negative height flips vertically
             }
+
+            // Draw halo effect around player
+            drawPlayerHalo(g2d, drawX, drawY, spriteWidth, spriteHeight);
 
             // Draw the sprite with calculated flipping
             g2d.drawImage(sprite, finalDrawX, finalDrawY, finalWidth, finalHeight, null);
@@ -310,7 +312,7 @@ public class Player extends Entity {
 
             // Movement
             acceleration.setX(acceleration.getX() + 1.2);
-        }        // Jumping logic
+        } // Jumping logic
         if (GameEngine.isKeyPressed(KeyEvent.VK_UP)) {
             // Wall jumps
             if (isTouchingLeftWall() && !jumped && velocity2.getY() <= 8) {
@@ -331,7 +333,7 @@ public class Player extends Entity {
                 // Reset fall tracking for wall jump
                 wasFalling = false;
                 fallStartY = y;
-            }            // Regular jump - must be touching ground or in coyote time
+            } // Regular jump - must be touching ground or in coyote time
             else if (coyoteTime > 0 && !jumped && velocity2.getY() <= 8) {
                 y -= 3 * swap;
                 velocity.setY(16);
@@ -510,13 +512,13 @@ public class Player extends Entity {
             velocity.setY(3);
 
             // Create projectile
-            Vector2D projectileVelocity = new Vector2D(100, 0);
+            Vector2D projectileVelocity = new Vector2D(30 * hDirection, 0);
             GameEngine.addProjectile(new Projectile(x, y, 4, projectileVelocity));
             cooldown[0] = 50;
 
             // Add subtle shake effect for shooting
             Camera camera = Camera.getInstance();
-            camera.shake(2, 5, Camera.ShakeType.HORIZONTAL);
+            camera.shake(15, 7, Camera.ShakeType.HORIZONTAL);
         }
         if (!GameEngine.isKeyPressed(KeyEvent.VK_X)) {
             shot[0] = false;
@@ -550,8 +552,10 @@ public class Player extends Entity {
                     break;
                 }
             }
-
             if (clone != null) {
+                // Start swap animation
+                Camera camera = Camera.getInstance();
+
                 // Swap positions
                 double tempX = clone.getX();
                 double tempY = clone.getY();
@@ -560,9 +564,8 @@ public class Player extends Entity {
                 y = tempY;
                 shot[2] = true;
                 swap *= -1;
-                fallStartY = y; // Reset fall start position on swap so it doesn't trigger hard landing // Add
-                // shake effect for character swap
-                Camera camera = Camera.getInstance();
+                fallStartY = y; // Reset fall start position on swap so it doesn't trigger hard landing
+                // Add water effect and shake for character swap
                 waterBoundary.createWaterEntry(x, 0.0, 12, -swap); // Reduced from 20 to 12 for better performance
                 camera.shake(8, 12, Camera.ShakeType.CIRCULAR);
             }
@@ -696,6 +699,83 @@ public class Player extends Entity {
     public void setPogo(boolean pogo) {
         if (pogoCool == 0) {
             this.pogo = pogo;
+        }
+    }
+
+    /**
+     * Draw a halo effect around the player sprite outline to distinguish from clone
+     */
+    private void drawPlayerHalo(Graphics2D g, int drawX, int drawY, int spriteWidth, int spriteHeight) {
+        if (sprite == null)
+            return;
+
+        // Get level bounds for gradient calculation
+        GameSettings settings = GameSettings.getInstance();
+        double levelTop = settings.getLevelTop();
+        double levelBottom = settings.getLevelBottom();
+        double levelMiddle = (levelTop + levelBottom) / 2.0;
+
+        // Calculate gradient color and opacity once for the entire player
+        Color haloColor;
+        float gradientOpacity;
+
+            double topRatio = Math.abs(y - levelTop) / Math.abs(levelMiddle - levelTop);
+            topRatio = Math.max(0.0, Math.min(1.0, topRatio)); // Clamp to 0-1
+            // Use a curve that maintains visibility near center: minimum 0.3 opacity
+            gradientOpacity = (float) Math.max(0.3, 1.0 - topRatio * 0.7);
+            haloColor = new Color(240, 142, 254); // Pink
+
+        // Skip drawing if opacity is too low
+        if (gradientOpacity < 0.05f)
+            return;
+
+        // Store original settings
+        Composite originalComposite = g.getComposite();
+        Object originalAntialiasing = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // Optimized halo effect: fewer layers and larger sampling for better
+        // performance
+        int haloDistance = 3; // Reduced from 4 for better performance
+        int sampleStep = 3; // Increased from 2 for better performance (check every 3rd pixel)
+
+        for (int layer = 0; layer < 2; layer++) { // Reduced from 3 layers to 2
+            float layerOpacity = gradientOpacity * (0.7f - layer * 0.3f); // Stronger opacity per layer
+
+            if (layerOpacity < 0.05f)
+                continue;
+
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, layerOpacity));
+            g.setColor(haloColor);
+
+            // Scan sprite pixels at reduced resolution for performance
+            for (int sy = 0; sy < spriteHeight; sy += sampleStep) {
+                for (int sx = 0; sx < spriteWidth; sx += sampleStep) {
+                    // Get pixel from sprite (handle bounds checking)
+                    if (sx >= sprite.getWidth() || sy >= sprite.getHeight())
+                        continue;
+
+                    int rgb = sprite.getRGB(sx * sprite.getWidth() / spriteWidth,
+                            sy * sprite.getHeight() / spriteHeight);
+                    int alpha = (rgb >> 24) & 0xFF;
+
+                    // If pixel is not transparent, draw halo around it
+                    if (alpha > 50) { // Threshold for considering pixel "solid"
+                        int pixelX = drawX + sx;
+                        int pixelY = drawY + sy;
+
+                        // Draw single glow circle for this layer (simplified from multiple circles)
+                        int glowSize = (layer + 1) * haloDistance;
+                        g.fillOval(pixelX - glowSize / 2, pixelY - glowSize / 2, glowSize, glowSize);
+                    }
+                }
+            }
+        }
+
+        // Restore original settings
+        g.setComposite(originalComposite);
+        if (originalAntialiasing != null) {
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, originalAntialiasing);
         }
     }
 }

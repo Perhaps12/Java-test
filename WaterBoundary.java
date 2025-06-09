@@ -11,7 +11,7 @@ import java.util.*;
 public class WaterBoundary {
     private static WaterBoundary instance; // Water boundary properties
     private static final double WATER_LEVEL = 0.0; // Y coordinate of water surface (center line)
-    private static final double WATER_DEPTH = 540.0; // How deep the water effect extends
+    private static final double WATER_DEPTH = 580.0; // How deep the water effect extends
     private static final int WATER_SEGMENTS = 150; // Number of segments for water surface
     private ArrayList<WaterSegment> waterSegments;
     private ArrayList<WaterParticle> waterParticles;
@@ -519,11 +519,9 @@ public class WaterBoundary {
             // Create texture paint that covers the entire level width
             // This will stretch/tile the texture across the whole map
             Rectangle2D textureRect = new Rectangle2D.Double(levelLeft, WATER_LEVEL, levelWidth, WATER_DEPTH);
-            TexturePaint texturePaint = new TexturePaint(waterTexture, textureRect);
-
-            // Apply some transparency to blend with the water effects
+            TexturePaint texturePaint = new TexturePaint(waterTexture, textureRect);            // Apply more transparency to blend with the water effects and show elements underneath
             AlphaComposite originalComposite = (AlphaComposite) g.getComposite();
-            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.8f));
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
 
             g.setPaint(texturePaint);
             g.fill(waterPath);
@@ -539,7 +537,7 @@ public class WaterBoundary {
                 int red = (int) (255 - ratio * 55); // 255 to 200
                 int green = (int) (100 - ratio * 50); // 100 to 50
                 int blue = (int) (150 - ratio * 50); // 150 to 100
-                int alpha = (int) (120 + ratio * 60); // 120 to 180
+                int alpha = (int) (80 + ratio * 40); // 80 to 120 (reduced from 120-180 for more translucency)
 
                 Color bandColor = new Color(red, green, blue, alpha);
                 g.setColor(bandColor);
@@ -550,10 +548,8 @@ public class WaterBoundary {
                 );
                 g.fill(band);
             }
-        }
-
-        // Draw pixelated water surface line
-        g.setColor(new Color(240, 142, 254, 200));
+        }        // Draw pixelated water surface line with reduced opacity
+        g.setColor(new Color(240, 142, 254, 120)); // Reduced alpha from 200 to 120
         g.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER));
 
         // Draw stepped surface line
@@ -687,14 +683,21 @@ public class WaterBoundary {
                     shimmerPattern[i][j] = Math.random() > 0.4; // chance to show segment
                 }
             }
-        }
+        }        // Get camera position for distance-based transparency calculations
+        Camera camera = Camera.getInstance();
+        double cameraX = camera.getCameraX();
+        double cameraY = camera.getCameraY();
+        
+        // Get screen dimensions for camera center calculations
+        int screenWidth = settings.getBaseWidth();
+        int screenHeight = settings.getBaseHeight();
 
-        // Draw using the stored pattern
+        // Draw using the stored pattern with distance-based transparency
         for (int i = 0; i < Math.min(patternHeight, shimmerPattern.length); i++) {
             if (30 - i <= 0) {
                 break; // Stop when transparency is too low
             }
-            g.setColor(new Color(255, 200, 230, (30 - i ))); // Fading shimmer effect
+
             double y = WATER_LEVEL + 10 + i * 8;
             double offsetX = Math.sin(shimmerFrame * 0.2 + i) * 3;
 
@@ -709,9 +712,25 @@ public class WaterBoundary {
                     && segmentIndex < shimmerPattern[i].length; x += segmentWidth, segmentIndex++) {
                 // Use the stored random pattern that only updates every few frames
                 if (shimmerPattern[i][segmentIndex]) {
-                    // Apply horizontal offset to create shimmering effect
-                    int shimmerX = (int) (x + offsetX);
-                    g.fillRect(shimmerX, lineY, segmentWidth, lineHeight);
+                    // Calculate distance from camera to this shimmer segment
+                    double shimmerX = x + offsetX;
+                    double distanceX = shimmerX - (cameraX + screenWidth / 2.0); // Camera center X
+                    double distanceY = lineY - (cameraY + screenHeight / 2.0); // Camera center Y
+                    double distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+                    // Calculate distance-based transparency factor (closer = more opaque)
+                    // Max visible distance of about 800 pixels from camera center
+                    double maxDistance = 800.0;
+                    double distanceFactor = Math.max(0.1, 1.0 - (distance / maxDistance));
+                    
+                    // Apply distance factor to the base alpha, maintaining the depth fade
+                    int baseAlpha = 30 - i;
+                    int finalAlpha = (int) (baseAlpha * distanceFactor);
+                    
+                    if (finalAlpha > 5) { // Only draw if alpha is significant enough
+                        g.setColor(new Color(255, 200, 230, finalAlpha));
+                        g.fillRect((int) shimmerX, lineY, segmentWidth, lineHeight);
+                    }
                 }
             }
         }

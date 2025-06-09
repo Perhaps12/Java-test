@@ -7,6 +7,7 @@ public class Projectile extends Entity {
     private int ID;
     private int direction = 0;
     private long creationTime;
+    private Vector2D velocity; // Initial velocity of the projectile
 
     /**
      * Create a new projectile
@@ -107,7 +108,7 @@ public class Projectile extends Entity {
             }
             case 4 -> {
                 // Ranged projectile moves in the direction it was fired
-                x += direction * 15; // Move 15 pixels per frame in the direction
+                x += velocity.getX(); // Move 15 pixels per frame in the direction
             }
         }
     }
@@ -156,7 +157,7 @@ public class Projectile extends Entity {
                 if (lifetime > 2.0)
                     setActive(false); // Longer duration for ranged attacks
             }
-            // Other projectiles might stay until they hit something or go off-screen
+            
         }
 
         // Deactivate if off-screen

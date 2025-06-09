@@ -264,6 +264,7 @@ public class Level {
         addPlatform(100, 300, 120);
         addPlatform(250, 350, 120);
         addPlatform(400, 280, 120);
+        addPlatform(600, 280, 15);
 
         // Small stepping platforms on the right
         addPlatform(levelWidth - 220, 320, 120);

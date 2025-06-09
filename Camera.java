@@ -18,24 +18,14 @@ public class Camera {
         return GameSettings.getInstance().getLevelWidth(); // Camera right edge
     }
 
-    private double getLevelTop() {
-        return GameSettings.getInstance().getLevelHeight() / 2; // Top of upper section
-    }
-
-    private double getLevelBottom() {
-        return -GameSettings.getInstance().getLevelHeight() / 2; // Bottom of lower section
-    }
-
     // Screen dimensions for camera bounds calculation
     private static final double SCREEN_WIDTH = 1920;
-    private static final double SCREEN_HEIGHT = 1080;
-
-    // Screen shake effect variables
+    private static final double SCREEN_HEIGHT = 1080; // Screen shake effect variables
     private double shakeX = 0;
     private double shakeY = 0;
     private double shakeIntensity = 0;
     private int shakeDuration = 0;
-    private double shakeDecay = 0.95; // How quickly shake intensity decreases
+    private double shakeDecay = 0.95; // How quickly shake intensity decreases // Swap animation variables
 
     // Shake pattern types
     private ShakeType currentShakeType = ShakeType.RANDOM;
@@ -112,13 +102,17 @@ public class Camera {
         targetCameraX = Math.max(targetCameraX, maxCameraLeft);
         targetCameraX = Math.min(targetCameraX, maxCameraRight);
 
+        // Adjust follow speed based on swap animation phase
+        double currentFollowSpeed = followSpeed;
+
         // Smoothly interpolate horizontally, set vertical position directly
-        cameraX += (targetCameraX - cameraX) * followSpeed;
+        cameraX += (targetCameraX - cameraX) * currentFollowSpeed;
         cameraY = targetCameraY; // Fixed vertical position to show both sections
     }
 
     /**
-     * Apply camera transform to graphics context (includes following and shake)
+     * Apply camera transform to graphics context (includes following, shake, and
+     * swap animation)
      */
     public void applyTransform(Graphics2D g) {
         // Apply camera position offset (for following player) and shake offset
@@ -129,7 +123,7 @@ public class Camera {
      * Remove camera transform from graphics context
      */
     public void removeTransform(Graphics2D g) {
-        // Restore original transform by reversing both camera and shake offsets
+        // Restore camera and shake offsets
         g.translate(cameraX + shakeX, cameraY + shakeY);
     }
 
@@ -171,6 +165,19 @@ public class Camera {
             shakeX = 0;
             shakeY = 0;
             shakeIntensity = 0;
+        }
+    }
+
+    /**
+     * Cubic ease-in-out function for smooth transitions
+     * Returns a value between 0 and 1 with smooth acceleration and deceleration
+     */
+    private double cubicEaseInOut(double t) {
+        if (t < 0.5) {
+            return 4 * t * t * t;
+        } else {
+            double f = (2 * t - 2);
+            return 1 + f * f * f / 2;
         }
     }
 
