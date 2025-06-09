@@ -35,16 +35,12 @@ public class Npc extends Entity {
         // set specific values below
         super(centerX, centerY, 30, 30, "");
 
-        this.ID = npcID;
-
-        // Set sprite and hitbox based on NPC type
+        this.ID = npcID;        // Set sprite and hitbox based on NPC type
         switch (npcID) {
             case 1 -> {
                 this.spritePath = "/Sprites/Clone/Idle/sprite_0.png"; // Default to first idle sprite
-                this.width = 50;
-                this.height = 74;
-                this.hitboxWidth = 50; // Update Entity hitbox dimensions
-                this.hitboxHeight = 74; // Update Entity hitbox dimensions
+                setSpriteSize(50, 74); // Visual sprite size same as player
+                setHitboxSize(40, 60); // Slightly smaller hitbox than visual for better gameplay
                 // Load animation sprites for clone
                 loadCloneAnimationSprites();
             }
@@ -216,40 +212,38 @@ public class Npc extends Entity {
         for (int i = 0; i < iFrames.length; i++) {
             iFrames[i] = Math.max(iFrames[i] - 1, 0);
         }
-    }
-
-    @Override
+    }    @Override
     public void draw(Graphics g) {
         if (ID == 1 && sprite != null) {
             // Custom drawing for clone with sprite flipping
             Graphics2D g2d = (Graphics2D) g;
-            int drawX = (int) (x - hitboxWidth / 2);
-            int drawY = (int) (y - hitboxHeight / 2);
+            int drawX = (int) (x - spriteWidth / 2);
+            int drawY = (int) (y - spriteHeight / 2);
 
             // Calculate sprite flipping based on both direction and gravity
             boolean flipHorizontal = (hDirection == -1); // Flip when facing left
             boolean flipVertical = (swap == -1); // Flip when gravity is inverted
 
-            int spriteWidth = (int) hitboxWidth;
-            int spriteHeight = (int) hitboxHeight;
+            int spriteRenderWidth = (int) spriteWidth;
+            int spriteRenderHeight = (int) spriteHeight;
 
             // Adjust drawing position and dimensions based on flipping
             int finalDrawX = drawX;
             int finalDrawY = drawY;
-            int finalWidth = spriteWidth;
-            int finalHeight = spriteHeight;
+            int finalWidth = spriteRenderWidth;
+            int finalHeight = spriteRenderHeight;
 
             if (flipHorizontal) {
-                finalDrawX = drawX + spriteWidth; // Move draw point to right edge
-                finalWidth = -spriteWidth; // Negative width flips horizontally
+                finalDrawX = drawX + spriteRenderWidth; // Move draw point to right edge
+                finalWidth = -spriteRenderWidth; // Negative width flips horizontally
             }
 
             if (flipVertical) {
-                finalDrawY = drawY + spriteHeight; // Move draw point to bottom edge
-                finalHeight = -spriteHeight; // Negative height flips vertically
+                finalDrawY = drawY + spriteRenderHeight; // Move draw point to bottom edge
+                finalHeight = -spriteRenderHeight; // Negative height flips vertically
             }            // Apply transparency to make clone more transparent
             AlphaComposite originalComposite = (AlphaComposite) g2d.getComposite();
-            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.6f)); // 60% opacity
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.7f)); // 70% opacity
 
             // Draw the sprite with calculated flipping
             g2d.drawImage(sprite, finalDrawX, finalDrawY, finalWidth, finalHeight, null);

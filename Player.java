@@ -188,39 +188,37 @@ public class Player extends Entity {
 
         // Update animations
         updateAnimation();
-    }
-
-    @Override
+    }    @Override
     public void draw(Graphics g) {
         if (sprite != null) {
             Graphics2D g2d = (Graphics2D) g;
-            int drawX = (int) (x - hitboxWidth / 2);
-            int drawY = (int) (y - hitboxHeight / 2);
+            int drawX = (int) (x - spriteWidth / 2);
+            int drawY = (int) (y - spriteHeight / 2);
 
             // Calculate sprite flipping based on both direction and gravity
             boolean flipHorizontal = (hDirection == -1); // Flip when facing left
             boolean flipVertical = (swap == -1); // Flip when gravity is inverted
 
-            int spriteWidth = (int) hitboxWidth;
-            int spriteHeight = (int) hitboxHeight;
+            int spriteRenderWidth = (int) spriteWidth;
+            int spriteRenderHeight = (int) spriteHeight;
 
             // Adjust drawing position and dimensions based on flipping
             int finalDrawX = drawX;
             int finalDrawY = drawY;
-            int finalWidth = spriteWidth;
-            int finalHeight = spriteHeight;
+            int finalWidth = spriteRenderWidth;
+            int finalHeight = spriteRenderHeight;
 
             if (flipHorizontal) {
-                finalDrawX = drawX + spriteWidth; // Move draw point to right edge
-                finalWidth = -spriteWidth; // Negative width flips horizontally
+                finalDrawX = drawX + spriteRenderWidth; // Move draw point to right edge
+                finalWidth = -spriteRenderWidth; // Negative width flips horizontally
             }
             if (flipVertical) {
-                finalDrawY = drawY + spriteHeight; // Move draw point to bottom edge
-                finalHeight = -spriteHeight; // Negative height flips vertically
+                finalDrawY = drawY + spriteRenderHeight; // Move draw point to bottom edge
+                finalHeight = -spriteRenderHeight; // Negative height flips vertically
             }
 
             // Draw halo effect around player
-            drawPlayerHalo(g2d, drawX, drawY, spriteWidth, spriteHeight);
+            drawPlayerHalo(g2d, drawX, drawY, spriteRenderWidth, spriteRenderHeight);
 
             // Draw the sprite with calculated flipping
             g2d.drawImage(sprite, finalDrawX, finalDrawY, finalWidth, finalHeight, null);

@@ -17,48 +17,47 @@ public class Projectile extends Entity {
 
         this.ID = projectileID;
         this.velocity = new Vector2D(initialVelocity);
-        this.creationTime = System.nanoTime();
-        // Set properties based on projectile type
+        this.creationTime = System.nanoTime();        // Set properties based on projectile type
         switch (projectileID) {
             // Horizontal melee attack
             case 1 -> {
                 spritePath = "/Sprites/friendlinessPellet.png"; // Add sprite for melee
-                width = 90;
-                height = 80;
+                setSpriteSize(90, 80); // Large visual sprite
+                setHitboxSize(50, 40); // Smaller hitbox for precision
                 direction = GameEngine.getPlayer() != null ? GameEngine.getPlayer().getDirection() : 1;
             }
             // Upwards melee attack
             case 2 -> {
                 spritePath = "/Sprites/friendlinessPellet.png"; // Add sprite for upward melee
-                width = 60;
-                height = 100;
+                setSpriteSize(60, 100); // Visual sprite size
+                setHitboxSize(40, 60); // Smaller hitbox
                 direction = GameEngine.getPlayer() != null ? GameEngine.getPlayer().getDirection() : 1;
             }
             // Downwards melee attack
             case 3 -> {
                 spritePath = "/Sprites/friendlinessPellet.png"; // Add sprite for downward melee
-                width = 60;
-                height = 100;
+                setSpriteSize(60, 100); // Visual sprite size
+                setHitboxSize(40, 60); // Smaller hitbox
                 direction = GameEngine.getPlayer() != null ? GameEngine.getPlayer().getDirection() : 1;
             }
             // Horizontal ranged attack
             case 4 -> {
                 spritePath = "/Sprites/thec oin.png"; // Add sprite for ranged attack
-                width = 70;
-                height = 56;
+                setSpriteSize(70, 56); // Visual sprite size
+                setHitboxSize(35, 28); // Smaller hitbox for precision
                 direction = GameEngine.getPlayer() != null ? GameEngine.getPlayer().getDirection() : 1;
             }
             // Player clone
             case 5 -> {
                 spritePath = "/Sprites/O-4.png";
-                width = 50;
-                height = 74;
+                setSpriteSize(50, 74); // Visual sprite size
+                setHitboxSize(40, 60); // Slightly smaller hitbox than visual
             }
             // Default
             default -> {
                 spritePath = "/Sprites/friendlinessPellet.png";
-                width = 64;
-                height = 30;
+                setSpriteSize(64, 30); // Visual sprite size
+                setHitboxSize(48, 24); // Smaller hitbox
                 acceleration.setY(0.9); // Apply gravity to this projectile type
             }
         }

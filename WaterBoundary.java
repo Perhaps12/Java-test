@@ -16,11 +16,11 @@ public class WaterBoundary {
     private ArrayList<WaterSegment> waterSegments;
     private ArrayList<WaterParticle> waterParticles;
     private ArrayList<WaterSplash> splashes;
-    private long lastUpdateTime; // Player interaction tracking
-
-    // Performance optimization constants
+    private long lastUpdateTime; // Player interaction tracking    // Performance optimization constants
     private static final int MAX_PARTICLES = 150; // Maximum number of water particles
-    private static final int MAX_SPLASHES = 20; // Maximum number of splash effects // Water texture properties
+    private static final int MAX_SPLASHES = 20; // Maximum number of splash effects
+    private static final int PARTICLE_CLEANUP_THRESHOLD = 120; // Start aggressive cleanup at this count
+    private static final int BATCH_CLEANUP_SIZE = 10; // Number of particles to remove in one pass when over threshold// Water texture properties
     private BufferedImage waterTexture;
     private boolean textureLoaded = false; // Frame timing for shimmer effect
     // animations)
@@ -258,30 +258,72 @@ public class WaterBoundary {
         if (shimmerAnimationTimer >= SHIMMER_ANIMATION_SPEED) {
             shimmerAnimationTimer = 0;
             shimmerFrame++;
-        }
-
-        updateWaterSegments();
+        }        updateWaterSegments();
         updateWaterParticles();
         updateSplashes(deltaTime);
         spreadWaves();
+        
+        // Proactive performance management
+        performProactiveCleanup();
     }
-
+    
     /**
-     * Create water entry effect when player crosses boundary
+     * Proactive cleanup to maintain performance during heavy particle usage
+     */
+    private void performProactiveCleanup() {
+        // If we have too many particles, remove the weakest ones proactively
+        if (waterParticles.size() > PARTICLE_CLEANUP_THRESHOLD) {
+            Iterator<WaterParticle> iterator = waterParticles.iterator();
+            int removed = 0;
+            int targetRemoval = (waterParticles.size() - PARTICLE_CLEANUP_THRESHOLD) / 2;
+            
+            while (iterator.hasNext() && removed < targetRemoval) {
+                WaterParticle particle = iterator.next();
+                // Remove particles with very low opacity or short remaining life
+                if (particle.getOpacity() < 0.4 || particle.life < particle.maxLife * 0.3) {
+                    iterator.remove();
+                    removed++;
+                }
+            }
+        }
+        
+        // Similar cleanup for splashes
+        if (splashes.size() > MAX_SPLASHES * 0.75) {
+            Iterator<WaterSplash> iterator = splashes.iterator();
+            int removed = 0;
+            int targetRemoval = (int)((splashes.size() - MAX_SPLASHES * 0.6) / 2);
+            
+            while (iterator.hasNext() && removed < targetRemoval) {
+                WaterSplash splash = iterator.next();
+                // Remove splashes with low opacity
+                if (splash.getOpacity() < 0.3) {
+                    iterator.remove();
+                    removed++;
+                }
+            }
+        }
+    }    /**
+     * Create water entry effect when player crosses boundary with optimized limits
      */
     public void createWaterEntry(double playerX, double playerY, double impact, int gravitySwap) { // must be public for
                                                                                                    // player effects
-        // Limit splash effects to prevent lag
-        if (splashes.size() < MAX_SPLASHES) {
+        // More conservative splash creation to prevent lag
+        if (splashes.size() < MAX_SPLASHES * 0.8) { // Only create if below 80% of limit
             splashes.add(new WaterSplash(playerX, WATER_LEVEL, impact * 0.8));
         }
 
         displaceWaterSegments(playerX, impact * 4.0, 60, gravitySwap);
 
-        // Reduce particle count for character swaps to prevent lag
-        int particleCount = Math.min((int) impact, 15); // Cap at 15 particles instead of 20
-        createWaterParticles(playerX, WATER_LEVEL, impact * 0.8, particleCount, gravitySwap);
-    } /*
+        // Further reduce particle count for character swaps to prevent lag
+        int baseParticleCount = Math.min((int) impact, 12); // Cap at 12 particles instead of 15
+        
+        // Reduce particle count even more if we're close to limits
+        if (waterParticles.size() > PARTICLE_CLEANUP_THRESHOLD) {
+            baseParticleCount = Math.min(baseParticleCount, 5);
+        }
+        
+        createWaterParticles(playerX, WATER_LEVEL, impact * 0.8, baseParticleCount, gravitySwap);
+    }/*
        * Displace water segments around a point with wave-like propagation
        */
 
@@ -321,16 +363,23 @@ public class WaterBoundary {
                 }
             }
         }
-    }
-
-    /**
-     * Create water particles for splash effects
+    }    /**
+     * Create water particles for splash effects with improved limits
      */
     private void createWaterParticles(double centerX, double centerY, double intensity, int count, int gravitySwap) {
-        // Enforce particle limit to prevent performance issues
-        int actualCount = Math.min(count, MAX_PARTICLES - waterParticles.size());
-        if (actualCount <= 0)
-            return; // Skip if we're at the limit
+        // Enforce stricter particle limits to prevent performance issues
+        int availableSlots = MAX_PARTICLES - waterParticles.size();
+        if (availableSlots <= 0) return; // Skip if we're at the limit
+        
+        // Reduce particle count based on current load
+        int actualCount = Math.min(count, availableSlots);
+        
+        // If we're close to the limit, reduce the count even further
+        if (waterParticles.size() > PARTICLE_CLEANUP_THRESHOLD) {
+            actualCount = Math.min(actualCount, 5); // Only allow 5 new particles when near limit
+        }
+        
+        if (actualCount <= 0) return;
 
         for (int i = 0; i < actualCount; i++) {
             // Random position spread around centers
@@ -348,8 +397,8 @@ public class WaterBoundary {
                 vy = (Math.random() * intensity * 0.8 + intensity * 0.3); // Downward bias
             }
 
-            // Reduced particle lifetime for better performance
-            double life = 45 + Math.random() * 60; // 0.75-1.75 seconds instead of 1-2.5 seconds
+            // Reduced particle lifetime for better performance and reduced visual clutter
+            double life = 35 + Math.random() * 50; // 0.6-1.4 seconds instead of 0.75-1.75 seconds
 
             WaterParticle particle = new WaterParticle(
                     centerX + offsetX,
@@ -370,37 +419,111 @@ public class WaterBoundary {
         for (WaterSegment segment : waterSegments) {
             segment.update();
         }
-    }
-
-    /**
-     * Update all water particles
+    }    /**
+     * Update all water particles with optimized cleanup
      */
     private void updateWaterParticles() {
+        // First, update all particles
+        for (WaterParticle particle : waterParticles) {
+            particle.update();
+        }
+        
+        // Then remove expired particles using iterator for safe removal
         Iterator<WaterParticle> iterator = waterParticles.iterator();
+        int removedCount = 0;
+        int targetRemoveCount = 0;
+        
+        // Calculate how many particles we need to remove for performance
+        if (waterParticles.size() > PARTICLE_CLEANUP_THRESHOLD) {
+            targetRemoveCount = Math.min(BATCH_CLEANUP_SIZE, waterParticles.size() - PARTICLE_CLEANUP_THRESHOLD);
+        }
+        
         while (iterator.hasNext()) {
             WaterParticle particle = iterator.next();
-            particle.update();
-
-            // Remove expired particles or if we're over the limit, remove older particles
-            // more aggressively
-            if (!particle.isAlive() || (waterParticles.size() > MAX_PARTICLES && particle.getOpacity() < 0.5)) {
+            
+            // Always remove if particle is dead
+            if (!particle.isAlive()) {
                 iterator.remove();
+                removedCount++;
+                continue;
+            }
+            
+            // If we're over the threshold, remove particles more aggressively
+            if (waterParticles.size() > MAX_PARTICLES) {
+                // Remove particles with low opacity or low life remaining
+                if (particle.getOpacity() < 0.3 || particle.life < particle.maxLife * 0.2) {
+                    iterator.remove();
+                    removedCount++;
+                    continue;
+                }
+            }
+            
+            // If we still need to remove more particles for performance, target oldest/weakest
+            if (removedCount < targetRemoveCount && (particle.getOpacity() < 0.5 || particle.life < particle.maxLife * 0.4)) {
+                iterator.remove();
+                removedCount++;
             }
         }
-    }
-
-    /**
-     * Update all splash effects
+        
+        // Emergency cleanup if we're still over the absolute limit
+        if (waterParticles.size() > MAX_PARTICLES) {
+            // Remove particles from the beginning of the list (oldest particles)
+            int toRemove = waterParticles.size() - MAX_PARTICLES;
+            for (int i = 0; i < toRemove && !waterParticles.isEmpty(); i++) {
+                waterParticles.remove(0);
+            }
+        }
+    }    /**
+     * Update all splash effects with optimized cleanup
      */
     private void updateSplashes(double deltaTime) {
+        // First, update all splashes
+        for (WaterSplash splash : splashes) {
+            splash.update(deltaTime);
+        }
+        
+        // Then remove expired splashes using iterator for safe removal
         Iterator<WaterSplash> iterator = splashes.iterator();
+        int removedCount = 0;
+        int targetRemoveCount = 0;
+        
+        // Calculate how many splashes we need to remove for performance
+        if (splashes.size() > MAX_SPLASHES * 0.8) { // Start cleanup earlier for splashes
+            targetRemoveCount = Math.min(5, splashes.size() - (int)(MAX_SPLASHES * 0.7));
+        }
+        
         while (iterator.hasNext()) {
             WaterSplash splash = iterator.next();
-            splash.update(deltaTime);
-
-            // Remove expired splashes or limit total count for performance
-            if (splash.isExpired() || (splashes.size() > MAX_SPLASHES && splash.getOpacity() < 0.3)) {
+            
+            // Always remove if splash is expired
+            if (splash.isExpired()) {
                 iterator.remove();
+                removedCount++;
+                continue;
+            }
+            
+            // If we're near the limit, remove splashes more aggressively
+            if (splashes.size() > MAX_SPLASHES) {
+                if (splash.getOpacity() < 0.2) {
+                    iterator.remove();
+                    removedCount++;
+                    continue;
+                }
+            }
+            
+            // If we still need to remove more splashes for performance
+            if (removedCount < targetRemoveCount && splash.getOpacity() < 0.4) {
+                iterator.remove();
+                removedCount++;
+            }
+        }
+        
+        // Emergency cleanup if we're still over the absolute limit
+        if (splashes.size() > MAX_SPLASHES) {
+            // Remove oldest splashes
+            int toRemove = splashes.size() - MAX_SPLASHES;
+            for (int i = 0; i < toRemove && !splashes.isEmpty(); i++) {
+                splashes.remove(0);
             }
         }
     }

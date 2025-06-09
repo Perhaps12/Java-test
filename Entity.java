@@ -2,33 +2,51 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import javax.imageio.ImageIO;
-import java.util.List;
 
 /**
  * Base class for game entities with sprite rendering, collision handling and
  * physics
  */
-public abstract class Entity extends GameObject {
-    // Image and rendering
+public abstract class Entity extends GameObject {    // Image and rendering
     protected BufferedImage sprite;
     protected String spritePath;
     protected double hitboxWidth;
     protected double hitboxHeight;
+    protected double spriteWidth;
+    protected double spriteHeight;
 
     // Physics
     protected Vector2D velocity; // current velocity vector of entity
     protected Vector2D acceleration; // current acceleration vector of entity
 
     // Timing
-    protected long lastUpdateTime;
-
-    /**
+    protected long lastUpdateTime;    /**
      * Create a new entity with position, size and sprite
      */
     public Entity(double x, double y, double hitboxWidth, double hitboxHeight, String spritePath) {
         super(x, y, hitboxWidth, hitboxHeight);
         this.hitboxWidth = hitboxWidth;
         this.hitboxHeight = hitboxHeight;
+        this.spriteWidth = hitboxWidth; // Default sprite size same as hitbox
+        this.spriteHeight = hitboxHeight; // Default sprite size same as hitbox
+        this.spritePath = spritePath;
+        this.velocity = new Vector2D(0, 0);
+        this.acceleration = new Vector2D(0, 0);
+        this.lastUpdateTime = System.nanoTime();
+
+        loadSprite();
+    }
+
+    /**
+     * Create a new entity with position, separate hitbox and sprite dimensions
+     */
+    public Entity(double x, double y, double hitboxWidth, double hitboxHeight, 
+                  double spriteWidth, double spriteHeight, String spritePath) {
+        super(x, y, hitboxWidth, hitboxHeight);
+        this.hitboxWidth = hitboxWidth;
+        this.hitboxHeight = hitboxHeight;
+        this.spriteWidth = spriteWidth;
+        this.spriteHeight = spriteHeight;
         this.spritePath = spritePath;
         this.velocity = new Vector2D(0, 0);
         this.acceleration = new Vector2D(0, 0);
@@ -48,12 +66,12 @@ public abstract class Entity extends GameObject {
                 System.out.println("couldn't load sprite " + spritePath);
             }
         }
-    }
-
-    @Override
+    }    @Override
     public void draw(Graphics g) {
         if (active && sprite != null) {
-            g.drawImage(sprite, (int) (x - hitboxWidth / 2), (int) (y - hitboxHeight / 2), null);
+            // Use sprite dimensions for rendering, not hitbox dimensions
+            g.drawImage(sprite, (int) (x - spriteWidth / 2), (int) (y - spriteHeight / 2), 
+                       (int) spriteWidth, (int) spriteHeight, null);
         }
     }
 
@@ -195,13 +213,87 @@ public abstract class Entity extends GameObject {
         double entityBottom = y + hitboxHeight / 2;
 
         return new double[]{entityLeft, entityRight, entityTop, entityBottom};
-    }
-
-    /**
+    }    /**
      * Set the position of this entity
      */
     public void setPosition(double x, double y) {
         this.x = x;
         this.y = y;
+    }
+
+    /**
+     * Get sprite width
+     */
+    public double getSpriteWidth() {
+        return spriteWidth;
+    }
+
+    /**
+     * Set sprite width
+     */
+    public void setSpriteWidth(double spriteWidth) {
+        this.spriteWidth = spriteWidth;
+    }
+
+    /**
+     * Get sprite height
+     */
+    public double getSpriteHeight() {
+        return spriteHeight;
+    }
+
+    /**
+     * Set sprite height
+     */
+    public void setSpriteHeight(double spriteHeight) {
+        this.spriteHeight = spriteHeight;
+    }
+
+    /**
+     * Set both sprite dimensions
+     */
+    public void setSpriteSize(double width, double height) {
+        this.spriteWidth = width;
+        this.spriteHeight = height;
+    }
+
+    /**
+     * Get hitbox width
+     */
+    public double getHitboxWidth() {
+        return hitboxWidth;
+    }
+
+    /**
+     * Set hitbox width
+     */
+    public void setHitboxWidth(double hitboxWidth) {
+        this.hitboxWidth = hitboxWidth;
+        this.width = hitboxWidth; // Update GameObject width
+    }
+
+    /**
+     * Get hitbox height
+     */
+    public double getHitboxHeight() {
+        return hitboxHeight;
+    }
+
+    /**
+     * Set hitbox height
+     */
+    public void setHitboxHeight(double hitboxHeight) {
+        this.hitboxHeight = hitboxHeight;
+        this.height = hitboxHeight; // Update GameObject height
+    }
+
+    /**
+     * Set both hitbox dimensions
+     */
+    public void setHitboxSize(double width, double height) {
+        this.hitboxWidth = width;
+        this.hitboxHeight = height;
+        this.width = width; // Update GameObject width
+        this.height = height; // Update GameObject height
     }
 }
