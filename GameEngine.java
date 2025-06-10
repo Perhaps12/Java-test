@@ -9,6 +9,8 @@ public class GameEngine {
     // Game entities
     private static Player player;
     private static final ArrayList<Projectile> projectiles = new ArrayList<>();
+    private static final Laser laser = new Laser(500,50,30,1000);
+    private static final ArrayList<Spike> spikes = new ArrayList<>();
     private static final ArrayList<Npc> npcs = new ArrayList<>();
     private static Level currentLevel; // Level manages its own walls
 
@@ -45,6 +47,7 @@ public class GameEngine {
 
         // Create player at the level's spawn point
         currentLevel.setPlayerSpawnPoint(0, -100);
+        currentLevel.addSpike(500, 500, 100, 100);
         Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
         player = new Player("/Sprites/O-4.png", playerSpawn.getX(), playerSpawn.getY());
 
@@ -92,14 +95,24 @@ public class GameEngine {
                 projectiles.remove(i);
                 i--;
             }
-        } // Update level
+        } 
+
+        // Update laser
+        if(laser != null){
+            laser.update(); 
+        }
+        // Update level
         if (currentLevel != null) {
             currentLevel.update();
         } // Update water boundary effects
         WaterBoundary.getInstance().update();
 
+        
         // Update camera
         Camera.getInstance().update();
+        
+        //Respawn method
+        respawn();
     }
 
     /**
@@ -113,6 +126,7 @@ public class GameEngine {
         Camera.getInstance().applyTransform(g2d);// Draw level (walls and background)
         if (currentLevel != null) {
             currentLevel.drawWalls(g);
+            currentLevel.drawSpikes(g);
         }
 
         // Draw clone character under water effects (if it exists)
@@ -150,10 +164,27 @@ public class GameEngine {
             int boxHeight = (int) (bottom - top);
             g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
         }
-
-        // Remove camera transform for ui
-        Camera.getInstance().removeTransform(g2d);
+        
+        if(laser.isActive()){
+            laser.draw(g);
+                // Draw hitbox around projectile
+                g2d.setColor(Color.RED);
+                g2d.setStroke(new BasicStroke(2.0f));
+                double[] box = laser.box();
+                double left = box[0];
+                double right = box[1];
+                double top = box[2];
+                double bottom = box[3];
+                int boxWidth = (int) (right - left);
+                int boxHeight = (int) (bottom - top);
+                g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
+            // Remove camera transform for ui
+            Camera.getInstance().removeTransform(g2d);
+        }
     }
+
+        
+
 
     /**
      * Add a projectile to the game
@@ -161,6 +192,11 @@ public class GameEngine {
     public static void addProjectile(Projectile projectile) {
         queuedProjectiles.add(projectile);
     }
+
+    
+    /**
+     * Add a laser
+     */
 
     /**
      * Load a new level
@@ -177,6 +213,11 @@ public class GameEngine {
         System.out.println("loaded level " + currentLevel.getLevelName());
     }
 
+    public static void respawn(){
+        if(player.isColliding(laser) && laser.isActive()){
+            loadLevel(getCurrentLevel());
+        }
+    }
     /**
      * Get the current level
      */
