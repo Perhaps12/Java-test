@@ -1,4 +1,5 @@
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
 /**
@@ -6,7 +7,8 @@ import java.util.ArrayList;
  * configurations
  */
 public class Level {
-    private ArrayList<Wall> walls;
+    private ArrayList<Wall> walls; // Collision walls (borders, barriers)
+    private ArrayList<Wall> platformWalls; // Platform collision boxes (separate from visual)
     private Vector2D playerSpawnPoint;
     private ArrayList<Vector2D> npcSpawnPoints;
     private String levelName;
@@ -14,6 +16,10 @@ public class Level {
     private int levelHeight;
     private int wallThickness;
     private Color backgroundColor;
+
+    // Pre-rendered platform layer for performance
+    private BufferedImage platformLayer;
+    private boolean platformLayerReady = false;
 
     /**
      * Create a new level with basic parameters
@@ -25,6 +31,7 @@ public class Level {
         this.wallThickness = wallThickness;
         this.backgroundColor = Color.WHITE;
         this.walls = new ArrayList<>();
+        this.platformWalls = new ArrayList<>(); // Initialize platform walls
         this.npcSpawnPoints = new ArrayList<>();
 
         // Set default player spawn point to center-left of top section
@@ -44,6 +51,7 @@ public class Level {
     public Level(String levelName, int levelWidth, int levelHeight, int wallThickness, Color backgroundColor) {
         this(levelName, levelWidth, levelHeight, wallThickness);
         this.backgroundColor = backgroundColor;
+        // platformWalls is already initialized in the main constructor
     }
 
     /**
@@ -57,21 +65,21 @@ public class Level {
         walls.add(new Wall(-wallThickness, // left
                 -halfHeight,
                 wallThickness,
-                levelHeight));
+                levelHeight, new Color(0, 0, 0, 0))); // transparent
 
         walls.add(new Wall(levelWidth, // right
                 -halfHeight,
                 wallThickness,
-                levelHeight));
+                levelHeight, new Color(0, 0, 0, 0))); // transparent
 
         walls.add(new Wall(0, // bottom
                 halfHeight,
                 levelWidth,
-                wallThickness));
+                wallThickness, new Color(0, 0, 0, 0)));
         walls.add(new Wall(0, // top
                 -halfHeight - wallThickness,
                 levelWidth,
-                wallThickness));
+                wallThickness, new Color(0, 0, 0, 0))); // transparent
 
         // Center dividing wall separates top and bottom sections
         // Positioned at y=0 origin point (transparent for visual effect)
@@ -79,7 +87,7 @@ public class Level {
                 -centerWallThickness / 2,
                 levelWidth,
                 centerWallThickness,
-                new Color(0, 0, 0), 
+                new Color(0, 0, 0),
                 0.0f)); // transparent
     }
 
@@ -127,6 +135,62 @@ public class Level {
     }
 
     /**
+     * Create a pre-rendered platform layer from the generated platforms
+     */
+    private void createPlatformLayer(ArrayList<Wall> platforms) {
+        System.out.println("Creating platform layer: " + levelWidth + "x" + levelHeight);
+
+        // Create a BufferedImage the size of the level
+        platformLayer = new BufferedImage(levelWidth, levelHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = platformLayer.createGraphics();
+
+        // Set rendering hints for better quality
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
+
+        // Clear the image with transparent background
+        g2d.setComposite(AlphaComposite.Clear);
+        g2d.fillRect(0, 0, levelWidth, levelHeight);
+        g2d.setComposite(AlphaComposite.SrcOver); // Draw each platform to the pre-rendered layer
+        for (Wall platform : platforms) {
+            // Platform coordinates are in top-left origin system
+            int imageX = (int) platform.getX();
+            int imageY = (int) platform.getY();
+
+            // Draw the platform sprite to the layer
+            platform.drawToImage(g2d, imageX, imageY);
+        }
+
+        g2d.dispose();
+        platformLayerReady = true;
+
+        System.out.println("Platform layer pre-rendered successfully");
+    }
+
+    /**
+     * Draw the pre-rendered platform layer
+     */
+    public void drawPlatformLayer(Graphics2D g, Camera camera) {
+        if (platformLayerReady && platformLayer != null) {
+            // The platform layer is pre-rendered in top-left coordinates
+            // Draw it directly without coordinate conversion
+            g.drawImage(platformLayer, 0, 0, null);
+        }
+    }
+
+    /**
+     * Reset the platform generation flag to allow regeneration
+     */
+    public void resetPlatformGeneration() {
+        platformLayerReady = false;
+        platformWalls.clear(); // Clear platform collision walls
+        if (platformLayer != null) {
+            platformLayer.flush();
+            platformLayer = null;
+        }
+    }
+
+    /**
      * Set player spawn point
      */
     public void setPlayerSpawnPoint(double x, double y) {
@@ -158,34 +222,6 @@ public class Level {
     }
 
     /**
-     * Create a platform wall (horizontal)
-     */
-    public void addPlatform(double x, double y, double width) {
-        addWall(x, y, width, wallThickness);
-    }
-
-    /**
-     * Create a vertical barrier wall
-     */
-    public void addBarrier(double x, double y, double height) {
-        addWall(x, y, wallThickness, height);
-    }
-
-    /**
-     * Create a room/chamber with walls on all sides
-     */
-    public void addRoom(double x, double y, double width, double height) {
-        // Left wall
-        addWall(x, y, wallThickness, height);
-        // Right wall
-        addWall(x + width - wallThickness, y, wallThickness, height);
-        // Top wall
-        addWall(x, y, width, wallThickness);
-        // Bottom wall
-        addWall(x, y + height - wallThickness, width, wallThickness);
-    }
-
-    /**
      * Draw all walls in the level
      */
     public void drawWalls(Graphics g) {
@@ -212,130 +248,83 @@ public class Level {
     }
 
     /**
-     * Get the center point of the level
+     * Generate platforms from a custom 2D layout
+     * This is the main method for creating custom platform layouts.
+     * 
+     * @param layout   2D array where 0 = empty space, 1 = platform/wall
+     * @param tileSize Size of each platform tile in pixels (recommended: 15)
      */
-    public Vector2D getCenterPoint() {
-        return new Vector2D(levelWidth / 2.0, 0); // Y=0 is the center line
-    }
+    public void generatePlatformsFromLayout(int[][] layout, int tileSize) {
+        // Clear existing platforms
+        resetPlatformGeneration(); // Use the main generatePlatforms method
+        ArrayList<Wall> customPlatforms = PlatformGenerator.generatePlatforms(layout, tileSize);
 
-    /**
-     * Clone this level
-     */
-    public Level clone(String newName) {
-        Level clonedLevel = new Level(newName, levelWidth, levelHeight, wallThickness, backgroundColor);
-
-        // Copy spawn points
-        clonedLevel.playerSpawnPoint = new Vector2D(playerSpawnPoint);
-        clonedLevel.npcSpawnPoints.clear();
-        for (Vector2D spawn : npcSpawnPoints) {
-            clonedLevel.npcSpawnPoints.add(new Vector2D(spawn));
+        // Add to collision system
+        platformWalls.clear();
+        for (Wall platform : customPlatforms) {
+            platformWalls.add(platform);
         }
 
-        // Copy walls (excluding default ones since they're already created)
-        clonedLevel.walls.clear();
-        for (Wall wall : walls) {
-            // Create new wall with same properties
-            clonedLevel.walls.add(new Wall(wall.getX(), wall.getY(), wall.getWidth(), wall.getHeight()));
+        // Pre-render visual layer
+        createPlatformLayer(customPlatforms);
+    }
+
+    /**
+     * Generate platforms from a custom 2D layout with custom x,y positioning
+     * 
+     * @param layout   2D array where 0 = empty space, 1 = platform/wall
+     * @param tileSize Size of each platform tile in pixels (recommended: 15)
+     * @param offsetX  X offset to apply to all platforms
+     * @param offsetY  Y offset to apply to all platforms
+     */
+    public void generatePlatformsFromLayout(int[][] layout, int tileSize, double offsetX, double offsetY) {
+        // Clear existing platforms
+        resetPlatformGeneration(); // Use the offset generatePlatforms method
+        ArrayList<Wall> customPlatforms = PlatformGenerator.generatePlatformsWithOffset(layout, tileSize, offsetX,
+                offsetY);
+
+        // Add to collision system
+        platformWalls.clear();
+        for (Wall platform : customPlatforms) {
+            platformWalls.add(platform);
         }
 
-        return clonedLevel;
+        // Pre-render visual layer
+        createPlatformLayer(customPlatforms);
+
+        System.out.println("Generated platforms from layout with offset (" + offsetX + ", " + offsetY + ")");
     }
 
     /**
-     * Create a level with platforms mirrored across the center dividing wall
+     * Generate platforms from individual pieces with custom coordinates
+     * 
+     * @param platformPieces List of platform pieces with custom coordinates
      */
-    public void createMirroredPlatforms() {
-        // Clear existing walls and recreate base structure
-        resetWalls();
+    public void generatePlatformsFromPieces(ArrayList<PlatformGenerator.PlatformPiece> platformPieces) {
+        // Clear existing platforms
+        resetPlatformGeneration(); // Generate platforms using the coordinate-based method
+        ArrayList<Wall> customPlatforms = PlatformGenerator.generatePlatformsWithCoordinates(platformPieces);
 
-        // Add some example platforms in the top section
-        // These will be automatically mirrored to the bottom section
-
-        // Left side platform
-        addPlatform(200, 200, 300);
-
-        // Right side platform
-        addPlatform(levelWidth - 500, 150, 350);
-
-        // Center floating platform
-        addPlatform(levelWidth / 2 - 100, 100, 200);
-
-        // Small stepping platforms on the left
-        addPlatform(100, 300, 120);
-        addPlatform(250, 350, 120);
-        addPlatform(400, 280, 120);
-        addPlatform(600, 280, 15);
-
-        // Small stepping platforms on the right
-        addPlatform(levelWidth - 220, 320, 120);
-        addPlatform(levelWidth - 370, 370, 120);
-        addPlatform(levelWidth - 520, 300, 120);
-
-        // Vertical barriers for interesting wall-jumping opportunities
-        addBarrier(600, 80, 200);
-        addBarrier(levelWidth - 650, 120, 180);
-
-        // Now mirror all non-border platforms to the bottom section
-        mirrorPlatformsToBottomSection();
-    }
-
-    /**
-     * Mirror all platforms from top section to bottom section across the center
-     * line (Y=0)
-     */
-    private void mirrorPlatformsToBottomSection() {
-        ArrayList<Wall> platformsToMirror = new ArrayList<>();
-
-        // Find all walls that are platforms (not border walls or center wall)
-        for (Wall wall : walls) {
-            double wallY = wall.getY();
-            double wallBottom = wallY + wall.getHeight();
-
-            // Only mirror platforms that are completely in the top section (positive Y
-            // values)
-            // Skip border walls and center dividing wall
-            if (wallY > 20 && wallBottom < levelHeight / 2 - 20) {
-                platformsToMirror.add(wall);
-            }
+        // Add to collision system
+        platformWalls.clear();
+        for (Wall platform : customPlatforms) {
+            platformWalls.add(platform);
         }
 
-        // Create mirrored versions in the bottom section
-        for (Wall platform : platformsToMirror) {
-            double originalY = platform.getY();
-            double mirroredY = -originalY - platform.getHeight(); // Mirror across Y=0
+        // Pre-render visual layer
+        createPlatformLayer(customPlatforms);
 
-            // Add the mirrored platform
-            Wall mirroredPlatform = new Wall(
-                    platform.getX(),
-                    mirroredY,
-                    platform.getWidth(),
-                    platform.getHeight());
-            walls.add(mirroredPlatform);
-        }
-    }
-
-    /**
-     * Create a new level with mirrored platforms across the center dividing wall
-     */
-    public static Level createMirroredLevel(String levelName, int levelWidth, int levelHeight, int wallThickness) {
-        Level level = new Level(levelName, levelWidth, levelHeight, wallThickness);
-        level.createMirroredPlatforms();
-        return level;
-    }
-
-    /**
-     * Create a new level with mirrored platforms and custom background color
-     */
-    public static Level createMirroredLevel(String levelName, int levelWidth, int levelHeight, int wallThickness,
-            Color backgroundColor) {
-        Level level = new Level(levelName, levelWidth, levelHeight, wallThickness, backgroundColor);
-        level.createMirroredPlatforms();
-        return level;
+        System.out.println("Generated platforms from " + platformPieces.size() + " individual pieces");
     }
 
     // Getters
+
     public ArrayList<Wall> getWalls() {
-        return walls;
+        // Combine border walls and platform walls for collision detection
+        ArrayList<Wall> allWalls = new ArrayList<>();
+        allWalls.addAll(walls); // Border and structural walls
+        allWalls.addAll(platformWalls); // Platform collision boxes
+        return allWalls;
     }
 
     public Vector2D getPlayerSpawnPoint() {

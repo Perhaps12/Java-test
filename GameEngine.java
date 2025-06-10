@@ -17,36 +17,27 @@ public class GameEngine {
     private static final ConcurrentLinkedQueue<Projectile> queuedProjectiles = new ConcurrentLinkedQueue<>();
     private static final Set<Integer> keys = new HashSet<>();
 
-    // Dimensions (from GameSettings)
+    // Dimensions
     public static final int WIDTH = GameSettings.getInstance().getBaseWidth();
     public static final int HEIGHT = GameSettings.getInstance().getBaseHeight();
 
-    // Level dimensions (scalable world size)
+    // Level dimensions
     public static final int LEVEL_WIDTH = GameSettings.getInstance().getLevelWidth();
     public static final int LEVEL_HEIGHT = GameSettings.getInstance().getLevelHeight();
 
     /**
-     * Initialize the game world
+     * Initialize game
      */
     public static void initializeGame() {
-        GameSettings settings = GameSettings.getInstance(); // Create the level (uncomment one of these options)
+        // Create the level first
+        currentLevel = new Level("Main Level", LEVEL_WIDTH, LEVEL_HEIGHT, 10);
 
-        // Option 1: Default level layout
-        // currentLevel = new Level("Main Level",
-        // settings.getLevelWidth(),
-        // settings.getLevelHeight(),
-        // settings.getWallThickness());
+        createPlatformLayout();
 
-        // Option 2: Level with mirrored platforms across center dividing wall
-        currentLevel = Level.createMirroredLevel("Mirrored Level",
-                settings.getLevelWidth(),
-                settings.getLevelHeight(),
-                settings.getWallThickness());
-
-        // Create player at the level's spawn point
+        // Create player at the level spawn point
         currentLevel.setPlayerSpawnPoint(0, -100);
         Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
-        player = new Player("/Sprites/O-4.png", playerSpawn.getX(), playerSpawn.getY());
+        player = new Player("/Sprites/Character/Idle/sprite_0.png", playerSpawn.getX(), playerSpawn.getY());
 
         // Create NPCs at their spawn points
         ArrayList<Vector2D> npcSpawns = currentLevel.getNpcSpawnPoints();
@@ -63,8 +54,23 @@ public class GameEngine {
     }
 
     /**
+     * reate a platform layout directly in code
+     */
+    private static void createPlatformLayout() {
+        int[][] Layout = {
+                { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1 },
+                { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1 },
+                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+        };
+
+        currentLevel.generatePlatformsFromLayout(Layout, 15, 400, 200);
+    }
+
+    /**
      * Update game state for a single frame
      */
+
     public static void update() {
         // Process projectiles from queue
         while (!queuedProjectiles.isEmpty() && projectiles.size() < MAX_PROJECTILES) {
@@ -110,9 +116,11 @@ public class GameEngine {
 
         // Draw fixed background texture (before camera transform so it doesn't move)
         BackgroundRenderer.getInstance().drawBackground(g2d); // Apply camera transform for world objects
-        Camera.getInstance().applyTransform(g2d);// Draw level (walls and background)
+        Camera.getInstance().applyTransform(g2d); // Draw level (walls and background)
         if (currentLevel != null) {
             currentLevel.drawWalls(g);
+            // Draw the pre-rendered platform layer
+            currentLevel.drawPlatformLayer(g2d, Camera.getInstance());
         }
 
         // Draw clone character under water effects (if it exists)
