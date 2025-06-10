@@ -7,6 +7,7 @@ import java.util.ArrayList;
  */
 public class Level {
     private ArrayList<Wall> walls;
+    private ArrayList<Spike> spikes; 
     private Vector2D playerSpawnPoint;
     private ArrayList<Vector2D> npcSpawnPoints;
     private String levelName;
@@ -25,6 +26,7 @@ public class Level {
         this.wallThickness = wallThickness;
         this.backgroundColor = Color.WHITE;
         this.walls = new ArrayList<>();
+        this.spikes = new ArrayList<>(); 
         this.npcSpawnPoints = new ArrayList<>();
 
         // Set default player spawn point to center-left of top section
@@ -36,6 +38,7 @@ public class Level {
 
         // Set default NPC spawn points
         setDefaultNpcSpawns();
+        
     }
 
     /**
@@ -103,12 +106,18 @@ public class Level {
     public void addWall(Wall wall) {
         walls.add(wall);
     }
+    
+    
 
     /**
      * Add a custom wall with specified parameters
      */
     public void addWall(double x, double y, double width, double height) {
         walls.add(new Wall(x, y, width, height));
+    }
+
+    public void addSpike(double x, double y, double width, double height) {
+        spikes.add(new Spike(x, y, width, height));
     }
 
     /**
@@ -191,6 +200,13 @@ public class Level {
     public void drawWalls(Graphics g) {
         for (Wall wall : walls) {
             wall.draw(g);
+        }
+    }
+
+    //Draw spikes in the level. 
+    public void drawSpikes(Graphics g){
+        for(Spike spike: spikes){
+            spike.draw(g); 
         }
     }
 
@@ -336,6 +352,10 @@ public class Level {
     // Getters
     public ArrayList<Wall> getWalls() {
         return walls;
+    }
+
+    public ArrayList<Spike> getSpikes(){
+        return spikes;
     }
 
     public Vector2D getPlayerSpawnPoint() {
