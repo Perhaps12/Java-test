@@ -422,18 +422,16 @@ public class Level {
      * @param offsetX  X offset to apply to platform
      * @param offsetY  Y offset to apply to platform
      */
-    public void generateSinglePlatformCollision(int[][] layout, int tileSize, double offsetX, double offsetY) {
+    public void generateSinglePlatformCollision(boolean[][] layout, int tileSize, double offsetX, double offsetY) {
         // Clear existing platforms
         resetPlatformGeneration();
 
         // Find bounding box of the entire platform layout
         int minRow = Integer.MAX_VALUE, maxRow = Integer.MIN_VALUE;
-        int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE;
-
-        // Find the bounds of solid tiles
+        int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE;        // Find the bounds of solid tiles
         for (int row = 0; row < layout.length; row++) {
             for (int col = 0; col < layout[row].length; col++) {
-                if (layout[row][col] == 1) {
+                if (layout[row][col]) {
                     minRow = Math.min(minRow, row);
                     maxRow = Math.max(maxRow, row);
                     minCol = Math.min(minCol, col);
@@ -483,7 +481,7 @@ public class Level {
      * @param offsetX  X offset to apply to platforms
      * @param offsetY  Y offset to apply to platforms
      */
-    public void generateOptimizedPlatformCollision(int[][] layout, int tileSize, double offsetX, double offsetY) {
+    public void generateOptimizedPlatformCollision(boolean[][] layout, int tileSize, double offsetX, double offsetY) {
         // Clear existing platforms
         resetPlatformGeneration();
 
@@ -492,11 +490,9 @@ public class Level {
         }
 
         // Find connected regions of solid tiles and create one collision box per region
-        boolean[][] visited = new boolean[layout.length][layout[0].length];
-
-        for (int row = 0; row < layout.length; row++) {
+        boolean[][] visited = new boolean[layout.length][layout[0].length];        for (int row = 0; row < layout.length; row++) {
             for (int col = 0; col < layout[row].length; col++) {
-                if (layout[row][col] == 1 && !visited[row][col]) {
+                if (layout[row][col] && !visited[row][col]) {
                     // Found unvisited solid tile - trace the connected region
                     ArrayList<int[]> region = new ArrayList<>();
                     traceConnectedRegion(layout, visited, row, col, region);
@@ -545,11 +541,10 @@ public class Level {
     /**
      * Helper method to trace connected solid tiles using flood fill
      */
-    private void traceConnectedRegion(int[][] layout, boolean[][] visited, int startRow, int startCol,
-            ArrayList<int[]> region) {
-        if (startRow < 0 || startRow >= layout.length ||
+    private void traceConnectedRegion(boolean[][] layout, boolean[][] visited, int startRow, int startCol,
+            ArrayList<int[]> region) {        if (startRow < 0 || startRow >= layout.length ||
                 startCol < 0 || startCol >= layout[0].length ||
-                visited[startRow][startCol] || layout[startRow][startCol] == 0) {
+                visited[startRow][startCol] || !layout[startRow][startCol]) {
             return;
         }
 
@@ -622,11 +617,10 @@ public class Level {
      * Add platforms from a custom 2D layout to the existing level
      * Creates additional collision walls and visual sprites without clearing
      * existing ones
-     * 
-     * @param layout   2D array where 0 = empty space, 1 = platform/wall
+     *     * @param layout   2D array where false = empty space, true = platform/wall
      * @param tileSize Size of each platform tile in pixels (recommended: 15)
      */
-    public void addPlatformsFromLayout(int[][] layout, int tileSize) {
+    public void addPlatformsFromLayout(boolean[][] layout, int tileSize) {
         // Generate single collision box for entire layout (not per tile)
         ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatforms(layout, tileSize);
         platformWalls.addAll(generatedCollisionWalls);
@@ -653,7 +647,7 @@ public class Level {
      * @param offsetX  X offset to apply to all platforms
      * @param offsetY  Y offset to apply to all platforms
      */
-    public void addPlatformsFromLayout(int[][] layout, int tileSize, double offsetX, double offsetY) {
+    public void addPlatformsFromLayout(boolean[][] layout, int tileSize, double offsetX, double offsetY) {
         // Generate single collision box for entire layout with offset (not per tile)
         ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatformsWithOffset(layout,
                 tileSize, offsetX, offsetY);

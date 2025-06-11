@@ -369,8 +369,7 @@ public class PlatformGenerator {
      * @param tileSize Size of each platform tile in pixels
      * @return List of Wall objects representing collision platforms (should contain
      *         1 wall)
-     */
-    public static ArrayList<Wall> generateCollisionPlatforms(int[][] layout, int tileSize) {
+     */    public static ArrayList<Wall> generateCollisionPlatforms(boolean[][] layout, int tileSize) {
         ArrayList<Wall> walls = new ArrayList<>();
 
         if (layout == null || layout.length == 0 || layout[0].length == 0) {
@@ -385,7 +384,7 @@ public class PlatformGenerator {
         // Find the bounds of all solid tiles
         for (int y = 0; y < layout.length; y++) {
             for (int x = 0; x < layout[y].length; x++) {
-                if (layout[y][x] == 1) {
+                if (layout[y][x]) {
                     minRow = Math.min(minRow, y);
                     maxRow = Math.max(maxRow, y);
                     minCol = Math.min(minCol, x);
@@ -421,8 +420,7 @@ public class PlatformGenerator {
      * @param offsetY  Y offset to apply to the platform
      * @return List of Wall objects representing collision platforms (should contain
      *         1 wall)
-     */
-    public static ArrayList<Wall> generateCollisionPlatformsWithOffset(int[][] layout, int tileSize,
+     */    public static ArrayList<Wall> generateCollisionPlatformsWithOffset(boolean[][] layout, int tileSize,
             double offsetX, double offsetY) {
         ArrayList<Wall> walls = new ArrayList<>();
 
@@ -433,12 +431,10 @@ public class PlatformGenerator {
 
         // Find bounding box of the entire platform layout
         int minRow = Integer.MAX_VALUE, maxRow = Integer.MIN_VALUE;
-        int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE;
-
-        // Find the bounds of all solid tiles
+        int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE;        // Find the bounds of all solid tiles
         for (int y = 0; y < layout.length; y++) {
             for (int x = 0; x < layout[y].length; x++) {
-                if (layout[y][x] == 1) {
+                if (layout[y][x]) {
                     minRow = Math.min(minRow, y);
                     maxRow = Math.max(maxRow, y);
                     minCol = Math.min(minCol, x);
@@ -463,16 +459,14 @@ public class PlatformGenerator {
         System.out.println(
                 "Generated " + walls.size() + " collision platform with offset (single box for entire layout)");
         return walls;
-    }
-
-    /**
+    }    /**
      * Generate visual sprite data using the platform configuration algorithm
      * 
      * @param layout   2D array where 0 = empty space, 1 = platform/wall
      * @param tileSize Size of each platform tile in pixels
      * @return List of PlatformSpriteData representing visual sprites
      */
-    public static ArrayList<PlatformSpriteData> generateVisualSprites(int[][] layout, int tileSize) {
+    public static ArrayList<PlatformSpriteData> generateVisualSprites(boolean[][] layout, int tileSize) {
         ArrayList<PlatformSpriteData> sprites = new ArrayList<>();
 
         if (layout == null || layout.length == 0 || layout[0].length == 0) {
@@ -489,7 +483,7 @@ public class PlatformGenerator {
         // Create sprite data for each platform
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                if (layout[y][x] == 0) {
+                if (!layout[y][x]) {
                     continue; // Skip empty spaces
                 }
 
@@ -530,8 +524,7 @@ public class PlatformGenerator {
      * @param offsetX  X offset to apply to all sprites
      * @param offsetY  Y offset to apply to all sprites
      * @return List of PlatformSpriteData representing visual sprites
-     */
-    public static ArrayList<PlatformSpriteData> generateVisualSpritesWithOffset(int[][] layout, int tileSize,
+     */    public static ArrayList<PlatformSpriteData> generateVisualSpritesWithOffset(boolean[][] layout, int tileSize,
             double offsetX, double offsetY) {
         ArrayList<PlatformSpriteData> sprites = new ArrayList<>();
 
@@ -544,12 +537,10 @@ public class PlatformGenerator {
         int width = layout[0].length;
 
         // Generate platform configuration using the algorithm
-        int[][][] platformConfig = generatePlatformConfig(layout);
-
-        // Create sprite data for each platform
+        int[][][] platformConfig = generatePlatformConfig(layout);        // Create sprite data for each platform
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                if (layout[y][x] == 0) {
+                if (!layout[y][x]) {
                     continue; // Skip empty spaces
                 }
 
@@ -682,8 +673,7 @@ public class PlatformGenerator {
      * @param offsetX  X offset for the entire block group
      * @param offsetY  Y offset for the entire block group
      * @return List of PlatformPiece objects that can be added to a level
-     */
-    public static ArrayList<PlatformPiece> generatePlatformBlocks(int[][] layout, int tileSize,
+     */    public static ArrayList<PlatformPiece> generatePlatformBlocks(boolean[][] layout, int tileSize,
             double offsetX, double offsetY) {
         ArrayList<PlatformPiece> blocks = new ArrayList<>();
 
@@ -696,12 +686,10 @@ public class PlatformGenerator {
         int width = layout[0].length;
 
         // Generate platform configuration using the algorithm
-        int[][][] platformConfig = generatePlatformConfig(layout);
-
-        // Create PlatformPiece objects for each solid tile
+        int[][][] platformConfig = generatePlatformConfig(layout);        // Create PlatformPiece objects for each solid tile
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                if (layout[y][x] == 0) {
+                if (!layout[y][x]) {
                     continue; // Skip empty spaces
                 }
 

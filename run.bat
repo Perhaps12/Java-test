@@ -1,5 +1,5 @@
 @echo off
-echo Compiling Java files...
+echo Compiling Java files..
 javac *.java
 if errorlevel 1 (
     echo Compilation failed!
