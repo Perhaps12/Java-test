@@ -1,4 +1,5 @@
 import java.awt.*;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -34,7 +35,16 @@ public class GameEngine {
         // Create the level first
         currentLevel = new Level("Main Level", LEVEL_WIDTH, LEVEL_HEIGHT, 10);
 
-        createPlatformLayout();
+        createLevelLayouts(1);
+        // for(boolean[][] i : Layout){
+        //     for(boolean[] j : i){
+        //         for(boolean k : j){
+        //             System.out.print(((k)? 1:0 )+ " ");
+        //         }System.out.println();
+        //     }System.out.println();
+        // }
+        createPlatformLayout(1);
+
 
         // Create player at the level spawn point
         currentLevel.setPlayerSpawnPoint(0, -100);
@@ -55,19 +65,67 @@ public class GameEngine {
             npcs.add(new Npc(cloneSpawn.getX(), cloneSpawn.getY(), 1)); // Clone NPC
         }
     }
+    
+    private static ArrayList<boolean[][]> Layout = new ArrayList<>();
+
+    private static void createLevelLayouts(int ID){
+        BufferedReader reader;
+        try{
+            switch(ID){
+                case 1 -> {
+                    reader = new BufferedReader(new FileReader("Static//Level1.txt"));
+                }
+                
+                default -> {
+                    reader = new BufferedReader(new FileReader("Static//Level0.txt"));
+                }
+
+                
+            }
+            while(reader.ready()){
+            String dimensions[] = reader.readLine().split(" ");
+            int r = Integer.parseInt(dimensions[0]);
+            int c = Integer.parseInt(dimensions[1]);
+            boolean layout[][] = new boolean[r][c];
+            if(dimensions[2].equals("0")){
+                for(int i = 0 ; i < r; i++){
+                    String str = reader.readLine();
+                    for(int j = 0 ; j < c;j++){
+                        layout[i][j] = str.charAt(j)=='1';
+                    }
+                }
+            }
+            else{
+                for(int i = 0 ; i < r; i++){
+                    for(int j = 0 ; j < c; j++){
+                        layout[i][j]=true;
+                    }
+                }
+            }
+            Layout.add(layout);
+
+        }
+        }catch(Exception e){
+            System.out.println("err");
+        }
+        
+        
+    }
 
     /**
      * reate a platform layout directly in code
      */
-    private static void createPlatformLayout() {
-        int[][] Layout = {
-                { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1 },
-                { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1 },
-                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
-        };
+    private static void createPlatformLayout(int ID) {
+        switch(ID){
+            case 1->{
+                currentLevel.generatePlatformsFromLayout(Layout.get(2), 15, 1500, 0);
+                currentLevel.generatePlatformsFromLayout(Layout.get(0), 15, 200, 0);
+            }
+            default -> {
 
-        currentLevel.generatePlatformsFromLayout(Layout, 15, 400, 200);
+            }
+        }
+        
     }
 
     /**

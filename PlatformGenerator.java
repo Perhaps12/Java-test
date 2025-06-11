@@ -1,7 +1,7 @@
 import java.awt.image.BufferedImage;
-import javax.imageio.ImageIO;
 import java.io.IOException;
 import java.util.ArrayList;
+import javax.imageio.ImageIO;
 
 /**
  * PlatformGenerator handles generation of platform tiles with appropriate
@@ -43,10 +43,10 @@ public class PlatformGenerator {
      * @param arr 2D array where 1 = solid platform, 0 = empty space
      * @return 3D array containing [platformID, rotationAngle] for each position
      */
-    public static int[][][] generatePlatformConfig(int[][] arr) {
+    public static int[][][] generatePlatformConfig(boolean[][] arr) {
         int n = arr.length;
         int m = arr[0].length;
-        int arr2[][] = new int[n + 2][m + 2];
+        boolean arr2[][] = new boolean[n + 2][m + 2];
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
                 arr2[i + 1][j + 1] = arr[i][j];
@@ -55,71 +55,71 @@ public class PlatformGenerator {
         int response[][][] = new int[n][m][2];
         for (int i = 1; i <= n; i++) {
             for (int j = 1; j <= m; j++) {
-                if (arr2[i][j] == 0)
+                if (!arr2[i][j])
                     continue;
-                int a = arr2[i - 1][j];
-                int b = arr2[i][j + 1];
-                int c = arr2[i + 1][j];
-                int d = arr2[i][j - 1];
+                boolean a = arr2[i - 1][j];
+                boolean b = arr2[i][j + 1];
+                boolean c = arr2[i + 1][j];
+                boolean d = arr2[i][j - 1];
                 // corner block
-                if (a == 0 && d == 0) {
+                if (!a&&!d) {
                     response[i - 1][j - 1][0] = 1;
                     response[i - 1][j - 1][1] = 0;
                     continue;
                 }
-                if (a == 0 && b == 0) {
+                if (a == false && b == false) {
                     response[i - 1][j - 1][0] = 1;
                     response[i - 1][j - 1][1] = 90;
                     continue;
                 }
-                if (b == 0 && c == 0) {
+                if (b == false && c == false) {
                     response[i - 1][j - 1][0] = 1;
                     response[i - 1][j - 1][1] = 180;
                     continue;
                 }
-                if (c == 0 && d == 0) {
+                if (c == false && d == false) {
                     response[i - 1][j - 1][0] = 1;
                     response[i - 1][j - 1][1] = 270;
                     continue;
                 }
                 // edge block
-                if (a == 0) {
+                if (a == false) {
                     response[i - 1][j - 1][0] = (int) (3 * Math.random()) + 2;
                     response[i - 1][j - 1][1] = 0;
                     continue;
                 }
-                if (b == 0) {
+                if (b == false) {
                     response[i - 1][j - 1][0] = (int) (3 * Math.random()) + 2;
                     response[i - 1][j - 1][1] = 90;
                     continue;
                 }
-                if (c == 0) {
+                if (c == false) {
                     response[i - 1][j - 1][0] = (int) (3 * Math.random()) + 2;
                     response[i - 1][j - 1][1] = 180;
                     continue;
                 }
-                if (d == 0) {
+                if (d == false) {
                     response[i - 1][j - 1][0] = (int) (3 * Math.random()) + 2;
                     response[i - 1][j - 1][1] = 270;
                     continue;
                 }
                 // inwards corner block
-                if (arr2[i - 1][j - 1] == 0) {
+                if (arr2[i - 1][j - 1] == false) {
                     response[i - 1][j - 1][0] = 5;
                     response[i - 1][j - 1][1] = 0;
                     continue;
                 }
-                if (arr2[i - 1][j + 1] == 0) {
+                if (arr2[i - 1][j + 1] == false) {
                     response[i - 1][j - 1][0] = 5;
                     response[i - 1][j - 1][1] = 90;
                     continue;
                 }
-                if (arr2[i + 1][j + 1] == 0) {
+                if (arr2[i + 1][j + 1] == false) {
                     response[i - 1][j - 1][0] = 5;
                     response[i - 1][j - 1][1] = 180;
                     continue;
                 }
-                if (arr2[i + 1][j - 1] == 0) {
+                if (arr2[i + 1][j - 1] == false) {
                     response[i - 1][j - 1][0] = 5;
                     response[i - 1][j - 1][1] = 270;
                     continue;
@@ -139,7 +139,7 @@ public class PlatformGenerator {
                         int newI = i + I;
                         int newJ = j + k;
                         if (newI >= 0 && newI < n && newJ >= 0 && newJ < m) {
-                            if (response[newI][newJ][0] == 10) {
+                            if (response[newI][newJ][0] >=1 && response[newI][newJ][0] <= 5) {
                                 special = true;
                                 break;
                             }
@@ -158,7 +158,7 @@ public class PlatformGenerator {
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
                 if (response[i][j][0] == 10) {
-                    response[i][j][0] = 9; // Use sprite 9 for inner blocks
+                    response[i][j][0] = 11; // Use sprite 9 for inner blocks
                 }
             }
         }
@@ -174,7 +174,7 @@ public class PlatformGenerator {
      * @param tileSize Size of each platform tile in pixels (recommended: 15)
      * @return List of Wall objects representing the platforms
      */
-    public static ArrayList<Wall> generatePlatforms(int[][] layout, int tileSize) {
+    public static ArrayList<Wall> generatePlatforms(boolean[][] layout, int tileSize) {
         ArrayList<Wall> walls = new ArrayList<>();
 
         if (layout == null || layout.length == 0 || layout[0].length == 0) {
@@ -194,7 +194,7 @@ public class PlatformGenerator {
         // Create Wall objects for each platform
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                if (layout[y][x] == 0) {
+                if (layout[y][x] == false) {
                     continue; // Skip empty spaces
                 }
 
@@ -269,7 +269,7 @@ public class PlatformGenerator {
      * @param offsetY  Y offset to apply to all pieces
      * @return List of Wall objects representing the platforms
      */
-    public static ArrayList<Wall> generatePlatformsWithOffset(int[][] layout, int tileSize, double offsetX,
+    public static ArrayList<Wall> generatePlatformsWithOffset(boolean[][] layout, int tileSize, double offsetX,
             double offsetY) {
         ArrayList<Wall> walls = new ArrayList<>();
 
@@ -287,7 +287,7 @@ public class PlatformGenerator {
         // Create Wall objects for each platform with custom offset
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                if (layout[y][x] == 0) {
+                if (layout[y][x] == false) {
                     continue; // Skip empty spaces
                 }
 
