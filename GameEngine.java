@@ -5,13 +5,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * Central game engine class that manages game state
  */
-public class GameEngine {
-    // Game entities
+public class GameEngine { // Game entities
     private static Player player;
     private static final ArrayList<Projectile> projectiles = new ArrayList<>();
-    private static final Laser laser = new Laser(500,50,30,1000);
     private static final ArrayList<Spike> spikes = new ArrayList<>();
     private static final ArrayList<Npc> npcs = new ArrayList<>();
+    private static final ArrayList<Laser> lasers = new ArrayList<>();
     private static Level currentLevel; // Level manages its own walls
 
     // Game settings
@@ -34,11 +33,13 @@ public class GameEngine {
         // Create the level first
         currentLevel = new Level("Main Level", LEVEL_WIDTH, LEVEL_HEIGHT, 10);
 
-        createPlatformLayout();
+        currentLevel.setPlayerSpawnPoint(50, -100);
+        // currentLevel.addSpike(500, 500, 100, 100); // Add lasers to the game with
+        // different orientations
+        addLaser(500, 300, 1000, 30, true, false); // Horizontal laser
+        addLaser(800, 200, 30, 400, false, false); // Vertical laser
+        addLaser(200, 100, 600, 25, true, true); // Horizontal laser (reversed)
 
-        // Create player at the level spawn point
-        currentLevel.setPlayerSpawnPoint(0, -100);
-        currentLevel.addSpike(500, 500, 100, 100);
         Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
         player = new Player("/Sprites/Character/Idle/sprite_0.png", playerSpawn.getX(), playerSpawn.getY());
 
@@ -49,11 +50,12 @@ public class GameEngine {
             Vector2D coinSpawn = npcSpawns.get(0);
             npcs.add(new Npc(coinSpawn.getX(), coinSpawn.getY(), 0)); // Coin NPC
         }
-
+        
         if (npcSpawns.size() > 1) {
             Vector2D cloneSpawn = npcSpawns.get(1);
             npcs.add(new Npc(cloneSpawn.getX(), cloneSpawn.getY(), 1)); // Clone NPC
         }
+        createPlatformLayout(); // Create player at the level spawn point
     }
 
     /**
@@ -61,13 +63,46 @@ public class GameEngine {
      */
     private static void createPlatformLayout() {
         int[][] Layout = {
-                { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1 },
-                { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1 },
-                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        1 },
+                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        1 },
+                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        1 },
+                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        1 },
+                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        1 },
+                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        1 },
+                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        1 },
+                { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                        1 },
         };
 
-        currentLevel.generatePlatformsFromLayout(Layout, 15, 400, 200);
+        ArrayList<PlatformGenerator.PlatformPiece> extraPieces = new ArrayList<>();
+        extraPieces.add(PlatformGenerator.createSimplePlatformBlock(600, -30, 45, 15, 2));
+        extraPieces.add(PlatformGenerator.createSimplePlatformBlock(700, -60, 30, 15,3));
+        currentLevel.addPlatformsFromPieces(extraPieces);
+        currentLevel.addPlatformsFromLayout(Layout,  15, 0, -60);
+
+        /**
+         * Example small platform layout
+         * int[][] smallLayout = {
+         * { 1, 1, 0, 1 },
+         * { 0, 1, 1, 1 }
+         * };
+         * currentLevel.addPlatformsFromLayout(smallLayout, 15, 400, -45);
+         * 
+         * Example individual platform pieces
+         * ArrayList<PlatformGenerator.PlatformPiece> extraPieces = new ArrayList<>();
+         * extraPieces.add(PlatformGenerator.createSimplePlatformBlock(600, -30, 45, 15,
+         * 2));
+         * extraPieces.add(PlatformGenerator.createSimplePlatformBlock(700, -60, 30, 15,
+         * 3));
+         * currentLevel.addPlatformsFromPieces(extraPieces);
+         */
     }
 
     /**
@@ -101,11 +136,13 @@ public class GameEngine {
                 projectiles.remove(i);
                 i--;
             }
-        } 
-
-        // Update laser
-        if(laser != null){
-            laser.update(); 
+        } // Update laser
+        for (int i = 0; i < lasers.size(); i++) {
+            lasers.get(i).update();
+            if (!lasers.get(i).isActive()) {
+                lasers.remove(i);
+                i--;
+            }
         }
         // Update level
         if (currentLevel != null) {
@@ -113,11 +150,10 @@ public class GameEngine {
         } // Update water boundary effects
         WaterBoundary.getInstance().update();
 
-        
         // Update camera
         Camera.getInstance().update();
-        
-        //Respawn method
+
+        // Respawn method
         respawn();
     }
 
@@ -171,11 +207,12 @@ public class GameEngine {
             int boxWidth = (int) (right - left);
             int boxHeight = (int) (bottom - top);
             g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
-        }
-        
-        if(laser.isActive()){
-            laser.draw(g);
-                // Draw hitbox around projectile
+        } // Draw lasers
+        for (Laser laser : lasers) {
+            laser.draw(g); // Always try to draw (laser handles visibility internally)
+
+            // Only draw hitbox when laser is dangerous
+            if (laser.isDangerous()) {
                 g2d.setColor(Color.RED);
                 g2d.setStroke(new BasicStroke(2.0f));
                 double[] box = laser.box();
@@ -186,13 +223,11 @@ public class GameEngine {
                 int boxWidth = (int) (right - left);
                 int boxHeight = (int) (bottom - top);
                 g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
-            // Remove camera transform for ui
-            Camera.getInstance().removeTransform(g2d);
+            }
         }
+        // Remove camera transform for ui
+        Camera.getInstance().removeTransform(g2d);
     }
-
-        
-
 
     /**
      * Add a projectile to the game
@@ -201,10 +236,21 @@ public class GameEngine {
         queuedProjectiles.add(projectile);
     }
 
-    
     /**
-     * Add a laser
+     * Add a laser with orientation parameters
+     * 
+     * @param x          X position of the laser center
+     * @param y          Y position of the laser center
+     * @param width      Width of the laser
+     * @param height     Height of the laser
+     * @param horizontal true for horizontal orientation, false for vertical
+     * @param reversed   true to reverse the orientation (flip direction)
      */
+    public static void addLaser(double x, double y, double width, double height, boolean horizontal, boolean reversed) {
+        Laser laser = new Laser(x, y, width, height);
+        laser.setOrientation(horizontal, reversed);
+        lasers.add(laser);
+    }
 
     /**
      * Load a new level
@@ -216,16 +262,34 @@ public class GameEngine {
         Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
         if (player != null) {
             player.setPosition(playerSpawn.getX(), playerSpawn.getY());
+            // Always ensure player spawns with normal gravity orientation
+            player.setSwap(1);
         }
 
         System.out.println("loaded level " + currentLevel.getLevelName());
     }
 
-    public static void respawn(){
-        if(player.isColliding(laser) && laser.isActive()){
+    public static void respawn() {
+        // Check collision with any laser
+        boolean hitLaser = false;
+        for (Laser laser : lasers) {
+            if (player.isColliding(laser) && laser.isDangerous()) {
+                // Reset laser orientation on death
+                laser.resetOrientation();
+                hitLaser = true;
+            }
+        }
+
+        if (hitLaser) {
+            // Ensure player always respawns with normal orientation
+            // This handles the case where player swaps and dies simultaneously
+            if (player != null) {
+                player.setSwap(1); // Force normal gravity before reloading level
+            }
             loadLevel(getCurrentLevel());
         }
     }
+
     /**
      * Get the current level
      */
@@ -263,6 +327,10 @@ public class GameEngine {
         return currentLevel != null ? currentLevel.getWalls() : new ArrayList<>();
     }
 
+    public static ArrayList<Laser> getLasers() {
+        return lasers;
+    }
+
     public static Set<Integer> getKeys() {
         return keys;
     }
@@ -277,4 +345,5 @@ public class GameEngine {
     public static boolean isKeyPressed(int keyCode) {
         return keys.contains(keyCode);
     }
+
 }

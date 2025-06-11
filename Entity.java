@@ -7,7 +7,7 @@ import javax.imageio.ImageIO;
  * Base class for game entities with sprite rendering, collision handling and
  * physics
  */
-public abstract class Entity extends GameObject {    // Image and rendering
+public abstract class Entity extends GameObject { // Image and rendering
     protected BufferedImage sprite;
     protected String spritePath;
     protected double hitboxWidth;
@@ -20,7 +20,9 @@ public abstract class Entity extends GameObject {    // Image and rendering
     protected Vector2D acceleration; // current acceleration vector of entity
 
     // Timing
-    protected long lastUpdateTime;    /**
+    protected long lastUpdateTime;
+
+    /**
      * Create a new entity with position, size and sprite
      */
     public Entity(double x, double y, double hitboxWidth, double hitboxHeight, String spritePath) {
@@ -40,8 +42,8 @@ public abstract class Entity extends GameObject {    // Image and rendering
     /**
      * Create a new entity with position, separate hitbox and sprite dimensions
      */
-    public Entity(double x, double y, double hitboxWidth, double hitboxHeight, 
-                  double spriteWidth, double spriteHeight, String spritePath) {
+    public Entity(double x, double y, double hitboxWidth, double hitboxHeight,
+            double spriteWidth, double spriteHeight, String spritePath) {
         super(x, y, hitboxWidth, hitboxHeight);
         this.hitboxWidth = hitboxWidth;
         this.hitboxHeight = hitboxHeight;
@@ -66,12 +68,20 @@ public abstract class Entity extends GameObject {    // Image and rendering
                 System.out.println("couldn't load sprite " + spritePath);
             }
         }
-    }    @Override
+    }
+
+    @Override
     public void draw(Graphics g) {
         if (active && sprite != null) {
-            // Use sprite dimensions for rendering, not hitbox dimensions
-            g.drawImage(sprite, (int) (x - spriteWidth / 2), (int) (y - spriteHeight / 2), 
-                       (int) spriteWidth, (int) spriteHeight, null);
+            // Check if we need to scale the sprite
+            if (spriteWidth == sprite.getWidth() && spriteHeight == sprite.getHeight()) {
+                // No scaling needed - use the faster draw method
+                g.drawImage(sprite, (int) (x - spriteWidth / 2), (int) (y - spriteHeight / 2), null);
+            } else {
+                // Scaling needed - use the slower but necessary scaled draw method
+                g.drawImage(sprite, (int) (x - spriteWidth / 2), (int) (y - spriteHeight / 2),
+                        (int) spriteWidth, (int) spriteHeight, null);
+            }
         }
     }
 
@@ -212,8 +222,10 @@ public abstract class Entity extends GameObject {    // Image and rendering
         double entityTop = y - hitboxHeight / 2;
         double entityBottom = y + hitboxHeight / 2;
 
-        return new double[]{entityLeft, entityRight, entityTop, entityBottom};
-    }    /**
+        return new double[] { entityLeft, entityRight, entityTop, entityBottom };
+    }
+
+    /**
      * Set the position of this entity
      */
     public void setPosition(double x, double y) {
