@@ -80,12 +80,17 @@ public class GameEngine { // Game entities
                 { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                         1 },
         };
+        int[][] smallLayout = {
+                { 1, 1, 0, 1 },
+                { 0, 1, 1, 1 }
+        };
 
         ArrayList<PlatformGenerator.PlatformPiece> extraPieces = new ArrayList<>();
         extraPieces.add(PlatformGenerator.createSimplePlatformBlock(600, -30, 45, 15, 2));
         extraPieces.add(PlatformGenerator.createSimplePlatformBlock(700, -60, 30, 15,3));
         currentLevel.addPlatformsFromPieces(extraPieces);
-        currentLevel.addPlatformsFromLayout(Layout,  15, 0, -60);
+        currentLevel.addPlatformsFromLayout(Layout, 15, 0, -60);
+        currentLevel.addPlatformsFromLayout(smallLayout, 15, 800, 0);
 
         /**
          * Example small platform layout

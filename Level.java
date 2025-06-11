@@ -7,7 +7,8 @@ import java.util.ArrayList;
  * configurations
  */
 public class Level {
-    private ArrayList<Wall> walls;    private ArrayList<Spike> spikes;
+    private ArrayList<Wall> walls;
+    private ArrayList<Spike> spikes;
     private ArrayList<Wall> platformWalls; // Platform collision boxes (separate from visual)
     private Vector2D playerSpawnPoint;
     private ArrayList<Vector2D> npcSpawnPoints;
@@ -15,9 +16,8 @@ public class Level {
     private int levelWidth;
     private int levelHeight;
     private int wallThickness;
-    private Color backgroundColor; 
-    // Platform visual data (separate from collision) - tracks ALL sprites
-    private ArrayList<PlatformGenerator.PlatformSpriteData> allPlatformSprites;
+    private Color backgroundColor; // Platform visual data (separate from collision)
+    private ArrayList<PlatformGenerator.PlatformSpriteData> platformSprites;
     private BufferedImage platformLayer; // Pre-rendered visual layer
     private boolean platformLayerReady = false;
 
@@ -29,10 +29,11 @@ public class Level {
         this.levelWidth = levelWidth;
         this.levelHeight = levelHeight;
         this.wallThickness = wallThickness;
-        this.backgroundColor = Color.WHITE;        this.walls = new ArrayList<>();
+        this.backgroundColor = Color.WHITE;
+        this.walls = new ArrayList<>();
         this.spikes = new ArrayList<>();
         this.platformWalls = new ArrayList<>(); // Initialize platform walls
-        this.allPlatformSprites = new ArrayList<>(); // Initialize sprite tracking
+        this.platformSprites = new ArrayList<>(); // Initialize platform sprites tracking
         this.npcSpawnPoints = new ArrayList<>();
 
         // Set default player spawn point to center-left of top section
@@ -242,6 +243,7 @@ public class Level {
     public void resetPlatformGeneration() {
         platformLayerReady = false;
         platformWalls.clear(); // Clear platform collision walls
+        platformSprites.clear(); // Clear platform sprite tracking
         if (platformLayer != null) {
             platformLayer.flush();
             platformLayer = null;
@@ -310,7 +312,9 @@ public class Level {
     public boolean isWithinBounds(double x, double y) {
         int halfHeight = levelHeight / 2;
         return x >= 0 && x <= levelWidth && y >= -halfHeight && y <= halfHeight;
-    }    /**
+    }
+
+    /**
      * Generate platforms from a custom 2D layout
      * Creates separate collision walls and visual sprites
      * 
@@ -324,18 +328,16 @@ public class Level {
         // Generate single collision box for entire layout (not per tile)
         platformWalls.clear();
         ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatforms(layout, tileSize);
-        platformWalls.addAll(generatedCollisionWalls);
-
-        // Generate visual sprites (purely decorative)
+        platformWalls.addAll(generatedCollisionWalls); // Generate visual sprites (purely decorative)
         ArrayList<PlatformGenerator.PlatformSpriteData> visualSprites = PlatformGenerator.generateVisualSprites(layout,
                 tileSize);
 
         // Store ALL sprites for future additions
-        allPlatformSprites.clear();
-        allPlatformSprites.addAll(visualSprites);
+        platformSprites.clear();
+        platformSprites.addAll(visualSprites);
 
         // Pre-render visual layer
-        createPlatformLayer(allPlatformSprites);
+        createPlatformLayer(platformSprites);
 
         System.out.println("Generated " + platformWalls.size() + " collision walls and " +
                 visualSprites.size() + " visual sprites");
@@ -357,16 +359,16 @@ public class Level {
         platformWalls.clear();
         ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatformsWithOffset(layout,
                 tileSize, offsetX, offsetY);
-        platformWalls.addAll(generatedCollisionWalls);        // Generate visual sprites with offset (purely decorative)
+        platformWalls.addAll(generatedCollisionWalls); // Generate visual sprites with offset (purely decorative)
         ArrayList<PlatformGenerator.PlatformSpriteData> visualSprites = PlatformGenerator
                 .generateVisualSpritesWithOffset(layout, tileSize, offsetX, offsetY);
 
         // Store ALL sprites for future additions
-        allPlatformSprites.clear();
-        allPlatformSprites.addAll(visualSprites);
+        platformSprites.clear();
+        platformSprites.addAll(visualSprites);
 
         // Pre-render visual layer
-        createPlatformLayer(allPlatformSprites);
+        createPlatformLayer(platformSprites);
 
         System.out.println("Generated platforms from layout with offset (" + offsetX + ", " + offsetY + ")");
         System.out.println("Created " + platformWalls.size() + " collision walls and " +
@@ -396,14 +398,15 @@ public class Level {
             String spritePath = String.format("/Sprites/Platforms (1)/sprite_0%d.png",
                     Math.max(0, Math.min(9, piece.spriteIndex)));
             visualSprites.add(new PlatformGenerator.PlatformSpriteData(
-                    piece.x, piece.y, piece.width, piece.height, spritePath, piece.rotation));        }
+                    piece.x, piece.y, piece.width, piece.height, spritePath, piece.rotation));
+        }
 
         // Store ALL sprites for future additions
-        allPlatformSprites.clear();
-        allPlatformSprites.addAll(visualSprites);
+        platformSprites.clear();
+        platformSprites.addAll(visualSprites);
 
         // Pre-render visual layer
-        createPlatformLayer(allPlatformSprites);
+        createPlatformLayer(platformSprites);
 
         System.out.println("Generated " + platformPieces.size() + " platform pieces:");
         System.out.println("- " + platformWalls.size() + " collision walls (invisible)");
@@ -453,18 +456,19 @@ public class Level {
 
             System.out.println("Created single platform collision box:");
             System.out.println("  Position: (" + platformX + ", " + platformY + ")");
-            System.out.println("  Size: " + platformWidth + "x" + platformHeight);        }
+            System.out.println("  Size: " + platformWidth + "x" + platformHeight);
+        }
 
         // Generate visual sprites (purely decorative)
         ArrayList<PlatformGenerator.PlatformSpriteData> visualSprites = PlatformGenerator
                 .generateVisualSpritesWithOffset(layout, tileSize, offsetX, offsetY);
 
         // Store ALL sprites for future additions
-        allPlatformSprites.clear();
-        allPlatformSprites.addAll(visualSprites);
+        platformSprites.clear();
+        platformSprites.addAll(visualSprites);
 
         // Pre-render visual layer
-        createPlatformLayer(allPlatformSprites);
+        createPlatformLayer(platformSprites);
 
         System.out.println("Generated single platform collision with " + platformWalls.size() +
                 " collision walls and " + visualSprites.size() + " visual sprites");
@@ -521,16 +525,18 @@ public class Level {
                     }
                 }
             }
-        }        // Generate visual sprites (purely decorative)
+        }
+
+        // Generate visual sprites (purely decorative)
         ArrayList<PlatformGenerator.PlatformSpriteData> visualSprites = PlatformGenerator
                 .generateVisualSpritesWithOffset(layout, tileSize, offsetX, offsetY);
 
         // Store ALL sprites for future additions
-        allPlatformSprites.clear();
-        allPlatformSprites.addAll(visualSprites);
+        platformSprites.clear();
+        platformSprites.addAll(visualSprites);
 
         // Pre-render visual layer
-        createPlatformLayer(allPlatformSprites);
+        createPlatformLayer(platformSprites);
 
         System.out.println("Generated optimized platform collision with " + platformWalls.size() +
                 " collision regions and " + visualSprites.size() + " visual sprites");
@@ -695,18 +701,20 @@ public class Level {
         System.out.println("- " + platformPieces.size() + " collision walls (invisible)");
         System.out.println("- " + newVisualSprites.size() + " visual sprites (decorative)");
         System.out.println("Total platform walls: " + platformWalls.size());
-    }    /**
+    }
+
+    /**
      * Helper method to add new sprites to the existing platform layer
      * This regenerates the entire visual layer with existing + new sprites
      */
     private void addSpritesToPlatformLayer(ArrayList<PlatformGenerator.PlatformSpriteData> newSprites) {
         // Add new sprites to the master list of all platform sprites
-        allPlatformSprites.addAll(newSprites);
+        platformSprites.addAll(newSprites);
 
         // Regenerate the entire visual layer with ALL sprites (existing + new)
-        createPlatformLayer(allPlatformSprites);
+        createPlatformLayer(platformSprites);
 
         System.out.println("Updated platform layer with " + newSprites.size() + " new sprites");
-        System.out.println("Total platform sprites now: " + allPlatformSprites.size());
+        System.out.println("Total platform sprites now: " + platformSprites.size());
     }
 }
