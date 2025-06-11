@@ -428,7 +428,7 @@ public class Level {
 
         // Find bounding box of the entire platform layout
         int minRow = Integer.MAX_VALUE, maxRow = Integer.MIN_VALUE;
-        int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE;        // Find the bounds of solid tiles
+        int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE; // Find the bounds of solid tiles
         for (int row = 0; row < layout.length; row++) {
             for (int col = 0; col < layout[row].length; col++) {
                 if (layout[row][col]) {
@@ -490,7 +490,8 @@ public class Level {
         }
 
         // Find connected regions of solid tiles and create one collision box per region
-        boolean[][] visited = new boolean[layout.length][layout[0].length];        for (int row = 0; row < layout.length; row++) {
+        boolean[][] visited = new boolean[layout.length][layout[0].length];
+        for (int row = 0; row < layout.length; row++) {
             for (int col = 0; col < layout[row].length; col++) {
                 if (layout[row][col] && !visited[row][col]) {
                     // Found unvisited solid tile - trace the connected region
@@ -542,7 +543,8 @@ public class Level {
      * Helper method to trace connected solid tiles using flood fill
      */
     private void traceConnectedRegion(boolean[][] layout, boolean[][] visited, int startRow, int startCol,
-            ArrayList<int[]> region) {        if (startRow < 0 || startRow >= layout.length ||
+            ArrayList<int[]> region) {
+        if (startRow < 0 || startRow >= layout.length ||
                 startCol < 0 || startCol >= layout[0].length ||
                 visited[startRow][startCol] || !layout[startRow][startCol]) {
             return;
@@ -617,7 +619,8 @@ public class Level {
      * Add platforms from a custom 2D layout to the existing level
      * Creates additional collision walls and visual sprites without clearing
      * existing ones
-     *     * @param layout   2D array where false = empty space, true = platform/wall
+     * * @param layout 2D array where false = empty space, true = platform/wall
+     * 
      * @param tileSize Size of each platform tile in pixels (recommended: 15)
      */
     public void addPlatformsFromLayout(boolean[][] layout, int tileSize) {

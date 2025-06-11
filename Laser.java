@@ -16,18 +16,40 @@ public class Laser extends Entity {
     private boolean isHorizontal = true; // true = horizontal, false = vertical
     private boolean isReversed = false; // true = flipped orientation
 
+    // Pulse control system
+    private boolean isPermanent = false; // true = always on, false = pulses on/off
+
     // Performance optimization: Cache transformed sprites
     private BufferedImage[] cachedLaserSprites; // Cached transformed laser sprites
     private BufferedImage[] cachedBaseSprites; // Cached transformed base sprites
-    private boolean spritesNeedUpdate = true; // Flag to update cached sprites
-
-    // Sprite sizing constants
+    private boolean spritesNeedUpdate = true; // Flag to update cached sprites // Sprite sizing constants
     private static final int MAX_SPRITE_SIZE = 32; // Max sprite size to fit in hitbox
     private static final int BASE_SPRITE_SIZE = 24; // Smaller base sprite size
 
     public Laser(double x, double y, double width, double height) {
         super(x, y, width, height, "");
         this.creationTime = System.nanoTime();
+
+        // Load laser sprites
+        loadLaserSprites();
+    }
+
+    /**
+     * Constructor for creating a laser with permanent option
+     * 
+     * @param x         X position
+     * @param y         Y position
+     * @param width     Width of the laser
+     * @param height    Height of the laser
+     * @param permanent true for permanent laser, false for pulsing laser
+     */
+    public Laser(double x, double y, double width, double height, boolean permanent) {
+        super(x, y, width, height, "");
+        this.creationTime = System.nanoTime();
+        this.isPermanent = permanent;
+        if (permanent) {
+            this.state = true; // Ensure laser starts visible if permanent
+        }
 
         // Load laser sprites
         loadLaserSprites();
@@ -44,6 +66,28 @@ public class Laser extends Entity {
         this.isReversed = reversed;
         this.spritesNeedUpdate = true; // Mark sprites for recaching
         System.out.println("Laser orientation set - horizontal: " + horizontal + ", reversed: " + reversed);
+    }
+
+    /**
+     * Set whether the laser is permanent (always on) or pulses on/off
+     * 
+     * @param permanent true for permanent laser, false for pulsing laser
+     */
+    public void setPermanent(boolean permanent) {
+        this.isPermanent = permanent;
+        if (permanent) {
+            this.state = true; // Ensure laser is visible when set to permanent
+        }
+        System.out.println("Laser set to " + (permanent ? "permanent" : "pulsing") + " mode");
+    }
+
+    /**
+     * Check if the laser is permanent (always on) or pulsing
+     * 
+     * @return true if permanent, false if pulsing
+     */
+    public boolean isPermanent() {
+        return isPermanent;
     }
 
     /**
@@ -184,6 +228,12 @@ public class Laser extends Entity {
     }
 
     private void handleLifetime() {
+        // Skip pulsing if laser is set to permanent mode
+        if (isPermanent) {
+            state = true; // Always keep permanent lasers visible
+            return;
+        }
+
         long now = System.nanoTime();
         double lifetime = (now - creationTime) / 1_000_000_000.0; // Convert to seconds
 

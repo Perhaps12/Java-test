@@ -33,13 +33,15 @@ public class GameEngine { // Game entities
     public static void initializeGame() {
         // Create the level first
         currentLevel = new Level("Main Level", LEVEL_WIDTH, LEVEL_HEIGHT, 10);
-
         currentLevel.setPlayerSpawnPoint(50, -100);
         // currentLevel.addSpike(500, 500, 100, 100); // Add lasers to the game with
         // different orientations
-        addLaser(500, 300, 1000, 30, true, false); // Horizontal laser
-        addLaser(800, 200, 30, 400, false, false); // Vertical laser
-        addLaser(200, 100, 600, 25, true, true); // Horizontal laser (reversed)
+        addLaser(500, 300, 1000, 30, true, false); // Horizontal laser (pulsing)
+        addLaser(800, 200, 30, 400, false, false); // Vertical laser (pulsing)
+        addLaser(200, 100, 600, 25, true, true); // Horizontal laser (reversed, pulsing)
+
+        // Add a permanent laser example
+        addPermanentLaser(1200, 20, 800, 35, true, false); // Horizontal permanent laser
 
         Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
         player = new Player("/Sprites/Character/Idle/sprite_0.png", playerSpawn.getX(), playerSpawn.getY());
@@ -51,79 +53,85 @@ public class GameEngine { // Game entities
             Vector2D coinSpawn = npcSpawns.get(0);
             npcs.add(new Npc(coinSpawn.getX(), coinSpawn.getY(), 0)); // Coin NPC
         }
-        
+
         if (npcSpawns.size() > 1) {
             Vector2D cloneSpawn = npcSpawns.get(1);
             npcs.add(new Npc(cloneSpawn.getX(), cloneSpawn.getY(), 1)); // Clone NPC
         }
         createPlatformLayout(); // Create player at the level spawn point
     }
-    
+
     private static ArrayList<boolean[][]> Layout = new ArrayList<>();
 
-    private static void createLevelLayouts(int ID){
+    private static void createLevelLayouts(int ID) {
         BufferedReader reader;
-        try{
-            switch(ID){
+        try {
+            switch (ID) {
                 case 1 -> {
                     reader = new BufferedReader(new FileReader("Static//Level1.txt"));
                 }
-                
+
                 default -> {
                     reader = new BufferedReader(new FileReader("Static//Level0.txt"));
                 }
 
-                
             }
-            while(reader.ready()){
-            String dimensions[] = reader.readLine().split(" ");
-            int r = Integer.parseInt(dimensions[0]);
-            int c = Integer.parseInt(dimensions[1]);
-            boolean layout[][] = new boolean[r][c];
-            if(dimensions[2].equals("0")){
-                for(int i = 0 ; i < r; i++){
-                    String str = reader.readLine();
-                    for(int j = 0 ; j < c;j++){
-                        layout[i][j] = str.charAt(j)=='1';
+            while (reader.ready()) {
+                String dimensions[] = reader.readLine().split(" ");
+                int r = Integer.parseInt(dimensions[0]);
+                int c = Integer.parseInt(dimensions[1]);
+                boolean layout[][] = new boolean[r][c];
+                if (dimensions[2].equals("0")) {
+                    for (int i = 0; i < r; i++) {
+                        String str = reader.readLine();
+                        for (int j = 0; j < c; j++) {
+                            layout[i][j] = str.charAt(j) == '1';
+                        }
+                    }
+                } else {
+                    for (int i = 0; i < r; i++) {
+                        for (int j = 0; j < c; j++) {
+                            layout[i][j] = true;
+                        }
                     }
                 }
-            }
-            else{
-                for(int i = 0 ; i < r; i++){
-                    for(int j = 0 ; j < c; j++){
-                        layout[i][j]=true;
-                    }
-                }
-            }
-            Layout.add(layout);
+                Layout.add(layout);
 
-        }
-        }catch(Exception e){
+            }
+        } catch (Exception e) {
             System.out.println("err");
         }
-        
-        
+
     }
 
     /**
      * reate a platform layout directly in code
-     */    private static void createPlatformLayout() {
+     */
+    private static void createPlatformLayout() {
         boolean[][] Layout = {
-                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                         true },
-                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                         true },
-                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                         true },
-                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                         true },
-                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                         true },
-                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                         true },
-                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                         true },
-                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+                        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                         true },
         };
         boolean[][] smallLayout = {
@@ -133,7 +141,7 @@ public class GameEngine { // Game entities
 
         ArrayList<PlatformGenerator.PlatformPiece> extraPieces = new ArrayList<>();
         extraPieces.add(PlatformGenerator.createSimplePlatformBlock(600, -30, 45, 15, 2));
-        extraPieces.add(PlatformGenerator.createSimplePlatformBlock(700, -60, 30, 15,3));
+        extraPieces.add(PlatformGenerator.createSimplePlatformBlock(700, -60, 30, 15, 3));
         currentLevel.addPlatformsFromPieces(extraPieces);
         currentLevel.addPlatformsFromLayout(Layout, 15, 0, -60);
         currentLevel.addPlatformsFromLayout(smallLayout, 15, 800, 0);
@@ -300,6 +308,24 @@ public class GameEngine { // Game entities
     public static void addLaser(double x, double y, double width, double height, boolean horizontal, boolean reversed) {
         Laser laser = new Laser(x, y, width, height);
         laser.setOrientation(horizontal, reversed);
+        lasers.add(laser);
+    }
+
+    /**
+     * Add a permanent laser (always on) with orientation parameters
+     * 
+     * @param x          X position of the laser center
+     * @param y          Y position of the laser center
+     * @param width      Width of the laser
+     * @param height     Height of the laser
+     * @param horizontal true for horizontal orientation, false for vertical
+     * @param reversed   true to reverse the orientation (flip direction)
+     */
+    public static void addPermanentLaser(double x, double y, double width, double height, boolean horizontal,
+            boolean reversed) {
+        Laser laser = new Laser(x, y, width, height);
+        laser.setOrientation(horizontal, reversed);
+        laser.setPermanent(true);
         lasers.add(laser);
     }
 
