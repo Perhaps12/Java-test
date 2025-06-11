@@ -1,4 +1,5 @@
 import java.awt.*;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -56,6 +57,52 @@ public class GameEngine { // Game entities
             npcs.add(new Npc(cloneSpawn.getX(), cloneSpawn.getY(), 1)); // Clone NPC
         }
         createPlatformLayout(); // Create player at the level spawn point
+    }
+    
+    private static ArrayList<boolean[][]> Layout = new ArrayList<>();
+
+    private static void createLevelLayouts(int ID){
+        BufferedReader reader;
+        try{
+            switch(ID){
+                case 1 -> {
+                    reader = new BufferedReader(new FileReader("Static//Level1.txt"));
+                }
+                
+                default -> {
+                    reader = new BufferedReader(new FileReader("Static//Level0.txt"));
+                }
+
+                
+            }
+            while(reader.ready()){
+            String dimensions[] = reader.readLine().split(" ");
+            int r = Integer.parseInt(dimensions[0]);
+            int c = Integer.parseInt(dimensions[1]);
+            boolean layout[][] = new boolean[r][c];
+            if(dimensions[2].equals("0")){
+                for(int i = 0 ; i < r; i++){
+                    String str = reader.readLine();
+                    for(int j = 0 ; j < c;j++){
+                        layout[i][j] = str.charAt(j)=='1';
+                    }
+                }
+            }
+            else{
+                for(int i = 0 ; i < r; i++){
+                    for(int j = 0 ; j < c; j++){
+                        layout[i][j]=true;
+                    }
+                }
+            }
+            Layout.add(layout);
+
+        }
+        }catch(Exception e){
+            System.out.println("err");
+        }
+        
+        
     }
 
     /**

@@ -321,7 +321,7 @@ public class Level {
      * @param layout   2D array where 0 = empty space, 1 = platform/wall
      * @param tileSize Size of each platform tile in pixels (recommended: 15)
      */
-    public void generatePlatformsFromLayout(int[][] layout, int tileSize) {
+    public void generatePlatformsFromLayout(boolean[][] layout, int tileSize) {
         // Clear existing platforms
         resetPlatformGeneration();
 
@@ -351,7 +351,7 @@ public class Level {
      * @param offsetX  X offset to apply to all platforms
      * @param offsetY  Y offset to apply to all platforms
      */
-    public void generatePlatformsFromLayout(int[][] layout, int tileSize, double offsetX, double offsetY) {
+    public void generatePlatformsFromLayout(boolean[][] layout, int tileSize, double offsetX, double offsetY) {
         // Clear existing platforms
         resetPlatformGeneration();
 
