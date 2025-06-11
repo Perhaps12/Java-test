@@ -31,18 +31,16 @@ public class GameEngine { // Game entities
      * Initialize game
      */
     public static void initializeGame() {
-        // Create the level first
         currentLevel = new Level("Main Level", LEVEL_WIDTH, LEVEL_HEIGHT, 10);
         currentLevel.setPlayerSpawnPoint(50, -100);
-        // currentLevel.addSpike(500, 500, 100, 100); // Add lasers to the game with
-        // different orientations
-        addLaser(500, 300, 1000, 30, true, false); // Horizontal laser (pulsing)
-        addLaser(800, 200, 30, 400, false, false); // Vertical laser (pulsing)
-        addLaser(200, 100, 600, 25, true, true); // Horizontal laser (reversed, pulsing)
-
-        // Add a permanent laser example
-        addPermanentLaser(1200, 20, 800, 35, true, false); // Horizontal permanent laser
-
+        addLaser(500, 300, 1000, 30, true, false);
+        addLaser(800, 200, 30, 400, false, false); 
+        addLaser(200, 100, 600, 25, true, true); 
+                                                 // example
+        addPermanentLaser(1200, 20, 800, 35, true, false);
+        addSpike(400, 150, 40, 40, false, false);
+        addSpike(600, 250, 50, 30, true, false);
+        addSpike(900, 100, 45, 45, false, true); 
         Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
         player = new Player("/Sprites/Character/Idle/sprite_0.png", playerSpawn.getX(), playerSpawn.getY());
 
@@ -203,6 +201,15 @@ public class GameEngine { // Game entities
                 i--;
             }
         }
+
+        // Update spikes
+        for (int i = 0; i < spikes.size(); i++) {
+            spikes.get(i).update();
+            if (!spikes.get(i).isActive()) {
+                spikes.remove(i);
+                i--;
+            }
+        }
         // Update level
         if (currentLevel != null) {
             currentLevel.update();
@@ -283,6 +290,23 @@ public class GameEngine { // Game entities
                 int boxHeight = (int) (bottom - top);
                 g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
             }
+        } // Draw spikes
+        for (Spike spike : spikes) {
+            spike.draw(g); // Always try to draw (spike handles visibility internally)
+
+            // Only draw hitbox when spike is dangerous
+            if (spike.isDangerous()) {
+                g2d.setColor(Color.MAGENTA);
+                g2d.setStroke(new BasicStroke(2.0f));
+                double[] box = spike.box();
+                double left = box[0];
+                double right = box[1];
+                double top = box[2];
+                double bottom = box[3];
+                int boxWidth = (int) (right - left);
+                int boxHeight = (int) (bottom - top);
+                g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
+            }
         }
         // Remove camera transform for ui
         Camera.getInstance().removeTransform(g2d);
@@ -330,6 +354,23 @@ public class GameEngine { // Game entities
     }
 
     /**
+     * Add a crystal spike with orientation parameters
+     * Note: All crystals are permanent (always visible)
+     * 
+     * @param x          X position of the crystal center
+     * @param y          Y position of the crystal center
+     * @param width      Width of the crystal
+     * @param height     Height of the crystal
+     * @param horizontal true for horizontal orientation, false for vertical
+     * @param reversed   true to reverse the orientation (flip direction)
+     */
+    public static void addSpike(double x, double y, double width, double height, boolean horizontal, boolean reversed) {
+        Spike spike = new Spike(x, y, width, height);
+        spike.setOrientation(horizontal, reversed);
+        spikes.add(spike);
+    }
+
+    /**
      * Load a new level
      */
     public static void loadLevel(Level newLevel) {
@@ -357,7 +398,17 @@ public class GameEngine { // Game entities
             }
         }
 
-        if (hitLaser) {
+        // Check collision with any spike
+        boolean hitSpike = false;
+        for (Spike spike : spikes) {
+            if (player.isColliding(spike) && spike.isDangerous()) {
+                // Reset spike orientation on death
+                spike.resetOrientation();
+                hitSpike = true;
+            }
+        }
+
+        if (hitLaser || hitSpike) {
             // Ensure player always respawns with normal orientation
             // This handles the case where player swaps and dies simultaneously
             if (player != null) {
@@ -406,6 +457,10 @@ public class GameEngine { // Game entities
 
     public static ArrayList<Laser> getLasers() {
         return lasers;
+    }
+
+    public static ArrayList<Spike> getSpikes() {
+        return spikes;
     }
 
     public static Set<Integer> getKeys() {
