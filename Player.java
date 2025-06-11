@@ -57,6 +57,9 @@ public class Player extends Entity {
         // Set default acceleration (gravity)
         acceleration.setY(0.9);
 
+        // Ensure player always starts with normal gravity orientation
+        swap = 1;
+
         // Load animation sprites
         loadAnimationSprites();
     }
@@ -144,31 +147,31 @@ public class Player extends Entity {
         // Update animation timer
         animationTimer++;
         if (isTouchingGround()) {
-            
+
             if (isWalking) {
                 // Walking animation
                 if (animationTimer >= WALK_ANIMATION_SPEED) {
-                animationTimer = 0;
-                currentFrame = (currentFrame + 1) % walkSprites.length;
+                    animationTimer = 0;
+                    currentFrame = (currentFrame + 1) % walkSprites.length;
+                }
+                // Use walk sprites
+                if (walkSprites[currentFrame] != null) {
+                    sprite = walkSprites[currentFrame];
+                }
+            } else {
+                // Idle animation
+                if (animationTimer >= IDLE_ANIMATION_SPEED) {
+                    animationTimer = 0;
+                    currentFrame = (currentFrame + 1) % idleSprites.length;
+                }
+                // Use idle sprites
+                if (idleSprites[currentFrame] != null) {
+                    sprite = idleSprites[currentFrame];
+                }
             }
-            // Use walk sprites
-            if (walkSprites[currentFrame] != null) {
-                sprite = walkSprites[currentFrame];
-            }
-        } else {
-            // Idle animation
-            if (animationTimer >= IDLE_ANIMATION_SPEED) {
-                animationTimer = 0;
-                currentFrame = (currentFrame + 1) % idleSprites.length;
-            }
-            // Use idle sprites
-            if (idleSprites[currentFrame] != null) {
-                sprite = idleSprites[currentFrame];
-            }
-        }
         }
     }
-    
+
     @Override
     public void update() {
         // Process attacks
@@ -310,7 +313,7 @@ public class Player extends Entity {
 
             // Movement
             acceleration.setX(acceleration.getX() + 1.2);
-        }        // Jumping logic
+        } // Jumping logic
         if (GameEngine.isKeyPressed(KeyEvent.VK_UP)) {
             // Wall jumps
             if (isTouchingLeftWall() && !jumped && velocity2.getY() <= 8) {
@@ -331,7 +334,7 @@ public class Player extends Entity {
                 // Reset fall tracking for wall jump
                 wasFalling = false;
                 fallStartY = y;
-            }            // Regular jump - must be touching ground or in coyote time
+            } // Regular jump - must be touching ground or in coyote time
             else if (coyoteTime > 0 && !jumped && velocity2.getY() <= 8) {
                 y -= 3 * swap;
                 velocity.setY(16);
@@ -510,7 +513,7 @@ public class Player extends Entity {
             velocity.setY(3);
 
             // Create projectile
-            Vector2D projectileVelocity = new Vector2D(100, 0);
+            Vector2D projectileVelocity = new Vector2D(30 * hDirection, 0);
             GameEngine.addProjectile(new Projectile(x, y, 4, projectileVelocity));
             cooldown[0] = 50;
 
@@ -691,6 +694,10 @@ public class Player extends Entity {
 
     public int getSwap() {
         return swap;
+    }
+
+    public void setSwap(int swap) {
+        this.swap = swap;
     }
 
     public void setPogo(boolean pogo) {

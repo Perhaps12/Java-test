@@ -1,3 +1,4 @@
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -361,6 +362,247 @@ public class PlatformGenerator {
     }
 
     /**
+     * Generate single collision platform (invisible wall) for entire layout
+     * Creates ONE Wall object per platform layout, not per tile
+     * 
+     * @param layout   2D array where 0 = empty space, 1 = platform/wall
+     * @param tileSize Size of each platform tile in pixels
+     * @return List of Wall objects representing collision platforms (should contain
+     *         1 wall)
+     */
+    public static ArrayList<Wall> generateCollisionPlatforms(int[][] layout, int tileSize) {
+        ArrayList<Wall> walls = new ArrayList<>();
+
+        if (layout == null || layout.length == 0 || layout[0].length == 0) {
+            System.err.println("Invalid layout provided!");
+            return walls;
+        }
+
+        // Find bounding box of the entire platform layout
+        int minRow = Integer.MAX_VALUE, maxRow = Integer.MIN_VALUE;
+        int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE;
+
+        // Find the bounds of all solid tiles
+        for (int y = 0; y < layout.length; y++) {
+            for (int x = 0; x < layout[y].length; x++) {
+                if (layout[y][x] == 1) {
+                    minRow = Math.min(minRow, y);
+                    maxRow = Math.max(maxRow, y);
+                    minCol = Math.min(minCol, x);
+                    maxCol = Math.max(maxCol, x);
+                }
+            }
+        }
+
+        // Create single collision box encompassing the entire platform
+        if (minRow != Integer.MAX_VALUE) { // If we found any solid tiles
+            double platformX = minCol * tileSize;
+            double platformY = minRow * tileSize;
+            double platformWidth = (maxCol - minCol + 1) * tileSize;
+            double platformHeight = (maxRow - minRow + 1) * tileSize;
+
+            // Create single invisible collision wall for entire platform
+            Wall platformCollision = new Wall(platformX, platformY, platformWidth, platformHeight,
+                    new Color(0, 0, 0, 0)); // Transparent
+            walls.add(platformCollision);
+        }
+
+        System.out.println("Generated " + walls.size() + " collision platform (single box for entire layout)");
+        return walls;
+    }
+
+    /**
+     * Generate single collision platform with offset
+     * Creates ONE Wall object per platform layout, not per tile
+     * 
+     * @param layout   2D array where 0 = empty space, 1 = platform/wall
+     * @param tileSize Size of each platform tile in pixels
+     * @param offsetX  X offset to apply to the platform
+     * @param offsetY  Y offset to apply to the platform
+     * @return List of Wall objects representing collision platforms (should contain
+     *         1 wall)
+     */
+    public static ArrayList<Wall> generateCollisionPlatformsWithOffset(int[][] layout, int tileSize,
+            double offsetX, double offsetY) {
+        ArrayList<Wall> walls = new ArrayList<>();
+
+        if (layout == null || layout.length == 0 || layout[0].length == 0) {
+            System.err.println("Invalid layout provided!");
+            return walls;
+        }
+
+        // Find bounding box of the entire platform layout
+        int minRow = Integer.MAX_VALUE, maxRow = Integer.MIN_VALUE;
+        int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE;
+
+        // Find the bounds of all solid tiles
+        for (int y = 0; y < layout.length; y++) {
+            for (int x = 0; x < layout[y].length; x++) {
+                if (layout[y][x] == 1) {
+                    minRow = Math.min(minRow, y);
+                    maxRow = Math.max(maxRow, y);
+                    minCol = Math.min(minCol, x);
+                    maxCol = Math.max(maxCol, x);
+                }
+            }
+        }
+
+        // Create single collision box encompassing the entire platform with offset
+        if (minRow != Integer.MAX_VALUE) { // If we found any solid tiles
+            double platformX = (minCol * tileSize) + offsetX;
+            double platformY = (minRow * tileSize) + offsetY;
+            double platformWidth = (maxCol - minCol + 1) * tileSize;
+            double platformHeight = (maxRow - minRow + 1) * tileSize;
+
+            // Create single invisible collision wall for entire platform
+            Wall platformCollision = new Wall(platformX, platformY, platformWidth, platformHeight,
+                    new Color(0, 0, 0, 0)); // Transparent
+            walls.add(platformCollision);
+        }
+
+        System.out.println(
+                "Generated " + walls.size() + " collision platform with offset (single box for entire layout)");
+        return walls;
+    }
+
+    /**
+     * Generate visual sprite data using the platform configuration algorithm
+     * 
+     * @param layout   2D array where 0 = empty space, 1 = platform/wall
+     * @param tileSize Size of each platform tile in pixels
+     * @return List of PlatformSpriteData representing visual sprites
+     */
+    public static ArrayList<PlatformSpriteData> generateVisualSprites(int[][] layout, int tileSize) {
+        ArrayList<PlatformSpriteData> sprites = new ArrayList<>();
+
+        if (layout == null || layout.length == 0 || layout[0].length == 0) {
+            System.err.println("Invalid layout provided!");
+            return sprites;
+        }
+
+        int height = layout.length;
+        int width = layout[0].length;
+
+        // Generate platform configuration using the algorithm
+        int[][][] platformConfig = generatePlatformConfig(layout);
+
+        // Create sprite data for each platform
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (layout[y][x] == 0) {
+                    continue; // Skip empty spaces
+                }
+
+                int platformId = platformConfig[y][x][0];
+                int rotation = platformConfig[y][x][1];
+
+                // Convert from 1-based algorithm IDs to 0-based sprite indices
+                int spriteIndex = platformId - 1;
+                if (platformId == 10) {
+                    spriteIndex = 8; // Convert temp inner (10) to sprite 8
+                }
+
+                // Ensure spriteIndex is within valid range (0-9)
+                spriteIndex = Math.max(0, Math.min(9, spriteIndex));
+
+                // Format the sprite path
+                String spritePath = String.format("/Sprites/Platforms (1)/sprite_0%d.png", spriteIndex);
+
+                // Convert tile coordinates to world coordinates
+                int worldX = x * tileSize;
+                int worldY = y * tileSize;
+
+                // Create sprite data
+                sprites.add(new PlatformSpriteData(worldX, worldY, tileSize, tileSize,
+                        spritePath, rotation));
+            }
+        }
+
+        System.out.println("Generated " + sprites.size() + " visual sprites");
+        return sprites;
+    }
+
+    /**
+     * Generate visual sprite data with offset
+     * 
+     * @param layout   2D array where 0 = empty space, 1 = platform/wall
+     * @param tileSize Size of each platform tile in pixels
+     * @param offsetX  X offset to apply to all sprites
+     * @param offsetY  Y offset to apply to all sprites
+     * @return List of PlatformSpriteData representing visual sprites
+     */
+    public static ArrayList<PlatformSpriteData> generateVisualSpritesWithOffset(int[][] layout, int tileSize,
+            double offsetX, double offsetY) {
+        ArrayList<PlatformSpriteData> sprites = new ArrayList<>();
+
+        if (layout == null || layout.length == 0 || layout[0].length == 0) {
+            System.err.println("Invalid layout provided!");
+            return sprites;
+        }
+
+        int height = layout.length;
+        int width = layout[0].length;
+
+        // Generate platform configuration using the algorithm
+        int[][][] platformConfig = generatePlatformConfig(layout);
+
+        // Create sprite data for each platform
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (layout[y][x] == 0) {
+                    continue; // Skip empty spaces
+                }
+
+                int platformId = platformConfig[y][x][0];
+                int rotation = platformConfig[y][x][1];
+
+                // Convert from 1-based algorithm IDs to 0-based sprite indices
+                int spriteIndex = platformId - 1;
+                if (platformId == 10) {
+                    spriteIndex = 8; // Convert temp inner (10) to sprite 8
+                }
+
+                // Ensure spriteIndex is within valid range (0-9)
+                spriteIndex = Math.max(0, Math.min(9, spriteIndex));
+
+                // Format the sprite path
+                String spritePath = String.format("/Sprites/Platforms (1)/sprite_0%d.png", spriteIndex);
+
+                // Convert tile coordinates to world coordinates with offset
+                double worldX = (x * tileSize) + offsetX;
+                double worldY = (y * tileSize) + offsetY;
+
+                // Create sprite data
+                sprites.add(new PlatformSpriteData(worldX, worldY, tileSize, tileSize,
+                        spritePath, rotation));
+            }
+        }
+
+        System.out.println("Generated " + sprites.size() + " visual sprites with offset");
+        return sprites;
+    }
+
+    /**
+     * Helper class to store platform sprite information for rendering
+     */
+    public static class PlatformSpriteData {
+        public double x, y;
+        public double width, height;
+        public String spritePath;
+        public int rotation;
+
+        public PlatformSpriteData(double x, double y, double width, double height,
+                String spritePath, int rotation) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.spritePath = spritePath;
+            this.rotation = rotation;
+        }
+    }
+
+    /**
      * Helper class to store platform piece information with coordinates
      */
     public static class PlatformPiece {
@@ -413,5 +655,78 @@ public class PlatformGenerator {
             this.rotation = rotation;
             this.customSpritePath = customSpritePath;
         }
+    }
+
+    /**
+     * Create a simple rectangular platform block
+     * 
+     * @param x           X coordinate
+     * @param y           Y coordinate
+     * @param width       Platform width
+     * @param height      Platform height
+     * @param spriteIndex Sprite to use (0-9)
+     * @return Single PlatformPiece object
+     */
+    public static PlatformPiece createSimplePlatformBlock(double x, double y, double width, double height,
+            int spriteIndex) {
+        return new PlatformPiece(x, y, width, height, spriteIndex, 0); // 0 rotation by default
+    }
+
+    /**
+     * Generate platform blocks from a small layout that can be added to existing
+     * levels
+     * This creates individual PlatformPiece objects that can be added anywhere
+     * 
+     * @param layout   2D array where 0 = empty space, 1 = platform/wall
+     * @param tileSize Size of each platform tile in pixels
+     * @param offsetX  X offset for the entire block group
+     * @param offsetY  Y offset for the entire block group
+     * @return List of PlatformPiece objects that can be added to a level
+     */
+    public static ArrayList<PlatformPiece> generatePlatformBlocks(int[][] layout, int tileSize,
+            double offsetX, double offsetY) {
+        ArrayList<PlatformPiece> blocks = new ArrayList<>();
+
+        if (layout == null || layout.length == 0 || layout[0].length == 0) {
+            System.err.println("Invalid layout provided!");
+            return blocks;
+        }
+
+        int height = layout.length;
+        int width = layout[0].length;
+
+        // Generate platform configuration using the algorithm
+        int[][][] platformConfig = generatePlatformConfig(layout);
+
+        // Create PlatformPiece objects for each solid tile
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (layout[y][x] == 0) {
+                    continue; // Skip empty spaces
+                }
+
+                int platformId = platformConfig[y][x][0];
+                int rotation = platformConfig[y][x][1];
+
+                // Convert from 1-based algorithm IDs to 0-based sprite indices
+                int spriteIndex = platformId - 1;
+                if (platformId == 10) {
+                    spriteIndex = 8; // Convert temp inner (10) to sprite 8
+                }
+
+                // Ensure spriteIndex is within valid range (0-9)
+                spriteIndex = Math.max(0, Math.min(9, spriteIndex));
+
+                // Convert tile coordinates to world coordinates with offset
+                double worldX = (x * tileSize) + offsetX;
+                double worldY = (y * tileSize) + offsetY;
+
+                // Create platform piece
+                blocks.add(new PlatformPiece(worldX, worldY, tileSize, tileSize, spriteIndex, rotation));
+            }
+        }
+
+        System.out.println("Generated " + blocks.size() + " platform blocks from layout");
+        return blocks;
     }
 }

@@ -107,7 +107,7 @@ public class Projectile extends Entity {
             }
             case 4 -> {
                 // Ranged projectile moves in the direction it was fired
-                x += velocity.getX(); // Move 15 pixels per frame in the direction
+                x += velocity.getX();
             }
         }
     }
