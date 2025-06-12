@@ -48,13 +48,15 @@ public class GameEngine { // Game entities
                                                                                                              // spawn
                                                                                                              // points
         ArrayList<Vector2D> npcSpawns = currentLevel.getNpcSpawnPoints();
-
         if (npcSpawns.size() > 0) {
             Vector2D coinSpawn = npcSpawns.get(0);
             npcs.add(new Npc(coinSpawn.getX(), coinSpawn.getY(), 0)); // Coin NPC
         }
 
-        // Clone NPC removed - no longer needed
+        if (npcSpawns.size() > 1) {
+            Vector2D cloneSpawn = npcSpawns.get(1);
+            npcs.add(new Npc(cloneSpawn.getX(), cloneSpawn.getY(), 1)); // Clone NPC
+        }
     }
 
     private static void createLevelLayouts(int ID) {
@@ -215,15 +217,24 @@ public class GameEngine { // Game entities
             // Draw the pre-rendered platform layer
             currentLevel.drawPlatformLayer(g2d, Camera.getInstance());
             currentLevel.drawSpikes(g);
-        } // Draw water boundary effect (behind everything else)
+        } // Draw clone character under water effects (if it exists)
+        for (Npc npc : npcs) {
+            if (npc.getID() == 1) { // Clone character
+                npc.draw(g);
+            }
+        }
+
+        // Draw water boundary effect (behind everything else except clone)
         WaterBoundary.getInstance().draw(g2d); // Draw player (only if active)
         if (player != null && player.isActive()) {
             player.draw(g);
         }
 
-        // Draw NPCs
+        // Draw other NPCs (not the clone)
         for (Npc npc : npcs) {
-            npc.draw(g);
+            if (npc.getID() != 1) { // All NPCs except clone
+                npc.draw(g);
+            }
         } // Draw projectiles
         for (Projectile p : projectiles) {
             p.draw(g);
