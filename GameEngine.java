@@ -39,8 +39,8 @@ public class GameEngine { // Game entities
     public static void initializeGame() {
         currentLevel = new Level("Main Level", LEVEL_WIDTH, LEVEL_HEIGHT, 10);
         currentLevel.setPlayerSpawnPoint(50, -100);
-        createLevelLayouts(1);
-        createPlatformLayout(1);
+        createLevelLayouts(2);
+        createPlatformLayout(2);
         Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
         player = new Player("/Sprites/Character/Idle/sprite_0.png", playerSpawn.getX(), playerSpawn.getY()); // Create
                                                                                                              // NPCs at
@@ -67,6 +67,9 @@ public class GameEngine { // Game entities
                     reader = new BufferedReader(new FileReader("Static//Level1.txt"));
                 }
 
+                case 2 ->{
+                    reader = new BufferedReader(new FileReader("Static//Level2.txt"));
+                }
                 default -> {
                     reader = new BufferedReader(new FileReader("Static//Level0.txt"));
                 }
@@ -122,6 +125,16 @@ public class GameEngine { // Game entities
                 addPermanentDualHeadLaser(1421.5, -75, 30, 225, false, false);
                 addSpike(700, -75, 36, 36, false, false);
 
+            }
+
+            case 2 ->{
+                currentLevel.addPlatformsFromLayout(levelLayout.get(0), -45, 0);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(1), 700, -375);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 625, -30);
+                addSpike(675, -200, 50, 50, true, true);
+                addSpike(675, -250, 50, 50, true, true);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 625, 150);
+                addLaser(playerDeathX, playerDeathY, playerDeathX, playerDeathX, isDeathScreenActive, isDeathScreenActive);
             }
             default -> {
                 System.out.println("No platform layout found for ID: " + ID);
