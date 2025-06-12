@@ -52,7 +52,7 @@ public class Player extends Entity {
      * Create a new player with position and sprite
      */
     public Player(String spritePath, double centerX, double centerY) {
-        super(centerX, centerY, 50, 74, spritePath);
+        super(centerX, centerY, 50, 75, spritePath);
 
         // Set default acceleration (gravity)
         acceleration.setY(0.9);
@@ -174,6 +174,11 @@ public class Player extends Entity {
 
     @Override
     public void update() {
+        // Skip all updates during death screen
+        if (GameEngine.isDeathScreenActive()) {
+            return;
+        }
+
         // Process attacks
         processAttacks();
 
@@ -246,7 +251,7 @@ public class Player extends Entity {
                 double shakeIntensity = Math.min(25, fallDistance / 20); // Scale intensity with fall distance
                 int shakeDuration = (int) Math.min(10, fallDistance / 30); // Scale duration with fall distance, cap at
                                                                            // 10 frames
-                System.out.println("fall distance land " + fallDistance);
+                // System.out.println("fall distance land " + fallDistance);
 
                 // Only trigger if it's a significant landing or no current shake
                 if (camera.shouldOverrideShake(shakeIntensity)) {
@@ -434,7 +439,57 @@ public class Player extends Entity {
 
         // Movement based on velocities - legacy:
         // pos.first+=hDirection*(vel.first+vel2.second)+hDirection2*vel2.first;
-        x += hDirection * (velocity.getX() + velocity2.getY()) + hDirection2 * velocity2.getX();
+
+        // Calculate total horizontal movement
+        double horizontalMovement = hDirection * (velocity.getX() + velocity2.getY()) + hDirection2 * velocity2.getX();
+
+        // Check if we're moving at high speed (dash or wall jump)
+        boolean isHighSpeed = velocity2.getY() > 15 || Math.abs(velocity2.getX()) > 10
+                || Math.abs(horizontalMovement) > 10;
+
+        if (isHighSpeed) {
+            // Use collision stepping to stop clipping
+            double oldX = x;
+            double maxStepSize = 5.0; // Maximum pixels per collision check step
+
+            // Break horizontal movement into steps
+            double totalDistance = Math.abs(horizontalMovement);
+            if (totalDistance > maxStepSize) {
+                int steps = (int) Math.ceil(totalDistance / maxStepSize);
+                double stepSize = horizontalMovement / steps;
+
+                // Move in small increments, checking for collisions each step
+                for (int i = 0; i < steps; i++) {
+                    x += stepSize;
+
+                    // Check for wall collisions after each step
+                    boolean collided = false;
+                    for (Wall wall : GameEngine.getWalls()) {
+                        if (isCollidingWithWall(wall)) {
+                            x = oldX + (stepSize * i); // Revert to last safe position
+                            handleWallCollision(wall);
+
+                            velocity2.setY(0);
+                            velocity2.setX(0);
+                            velocity.setX(0);
+
+                            collided = true;
+                            break;
+                        }
+                    }
+
+                    if (collided) {
+                        break; // Stop movement if we hit something
+                    }
+                }
+            } else {
+                // Normal movement for lower speeds
+                x += horizontalMovement;
+            }
+        } else {
+            // Normal movement for regular speeds
+            x += horizontalMovement;
+        }
 
         // Reset gravity to normal if no special keys are pressed
         if (!(GameEngine.isKeyPressed(KeyEvent.VK_DOWN) || GameEngine.isKeyPressed(KeyEvent.VK_UP))) {
@@ -553,26 +608,92 @@ public class Player extends Entity {
                     break;
                 }
             }
-
             if (clone != null) {
-                // Swap positions
-                double tempX = clone.getX();
-                double tempY = clone.getY();
-                clone.setPosition(x, y);
-                x = tempX;
-                y = tempY;
-                shot[2] = true;
-                swap *= -1;
-                fallStartY = y; // Reset fall start position on swap so it doesn't trigger hard landing // Add
-                // shake effect for character swap
-                Camera camera = Camera.getInstance();
-                waterBoundary.createWaterEntry(x, 0.0, 12, -swap); // Reduced from 20 to 12 for better performance
-                camera.shake(8, 12, Camera.ShakeType.CIRCULAR);
+                // Check if clone's position is valid for player teleportation
+                double cloneX = clone.getX();
+                double cloneY = clone.getY();
+
+                boolean isValid = isValidPosition(cloneX, cloneY);
+
+                if (isValid) {
+                    // Position is safe, perform swap
+                    clone.setPosition(x, y);
+                    x = cloneX;
+                    y = cloneY;
+                    shot[2] = true;
+                    swap *= -1;
+                    fallStartY = y; // Reset fall start position on swap so it doesn't trigger hard landing
+
+                    // Add shake effect for character swap
+                    Camera camera = Camera.getInstance();
+                    waterBoundary.createWaterEntry(x, 0.0, 12, -swap);
+                    camera.shake(8, 12, Camera.ShakeType.CIRCULAR);
+                } else {
+                    // Clone is in an invalid position (wall or out of bounds)
+                    // Don't perform swap, but still register the key press to prevent repeated
+                    // attempts
+                    shot[2] = true;
+
+                    // Optional: Add a different visual/audio feedback to indicate failed swap
+                    Camera camera = Camera.getInstance();
+                    camera.shake(3, 5, Camera.ShakeType.RANDOM); // Smaller shake to indicate failure
+                }
             }
         }
         if (!GameEngine.isKeyPressed(KeyEvent.VK_S)) {
             shot[2] = false;
         }
+    }
+
+    /**
+     * Check if a position is valid (not colliding with walls and within bounds)
+     */
+    private boolean isValidPosition(double checkX, double checkY) {
+        // Check if position is within level bounds
+        Level currentLevel = GameEngine.getCurrentLevel();
+        if (currentLevel != null) {
+            // Get level dimensions (assuming they exist in Level class)
+            double levelWidth = GameEngine.LEVEL_WIDTH;
+            double levelHeight = GameEngine.LEVEL_HEIGHT;
+
+            // Check bounds with hitbox consideration
+            if (checkX - hitboxWidth / 2 < 0 ||
+                    checkX + hitboxWidth / 2 > levelWidth ||
+                    checkY - hitboxHeight / 2 < -levelHeight / 2 ||
+                    checkY + hitboxHeight / 2 > levelHeight / 2) {
+                return false;
+            }
+        }
+
+        for (Wall wall : GameEngine.getWalls()) {
+            // Skip transparent walls (these are likely water effects or visual elements)
+            if (wall.getColor() != null && wall.getColor().getAlpha() == 0 && wall.getAlpha() < 0.1f) {
+                continue; // Skip transparent walls that are just collision boundaries
+            }
+
+            // Create temporary hitbox at the check position
+            double playerLeft = checkX - hitboxWidth / 2;
+            double playerRight = checkX + hitboxWidth / 2;
+            double playerTop = checkY - hitboxHeight / 2;
+            double playerBottom = checkY + hitboxHeight / 2;
+
+            double wallLeft = wall.getX();
+            double wallRight = wall.getX() + wall.getWidth();
+            double wallTop = wall.getY();
+            double wallBottom = wall.getY() + wall.getHeight();
+
+            // Check for overlap
+            if (playerRight > wallLeft && playerLeft < wallRight &&
+                    playerBottom > wallTop && playerTop < wallBottom) {
+                if (Math.abs(wallTop) < 5.0 && (wallRight - wallLeft) > 1000) { // Only applies for center wall
+                    continue; // Allow teleportation near water surface
+                }
+
+                return false; // Position would cause collision with a real wall
+            }
+        }
+
+        return true; // Position is valid
     }
 
     /**

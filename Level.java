@@ -323,12 +323,11 @@ public class Level {
      */
     public void generatePlatformsFromLayout(boolean[][] layout, int tileSize) {
         // Clear existing platforms
-        resetPlatformGeneration();
-
-        // Generate single collision box for entire layout (not per tile)
+        resetPlatformGeneration(); // Generate optimized collision rectangles (grouped tiles, not per tile)
         platformWalls.clear();
-        ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatforms(layout, tileSize);
-        platformWalls.addAll(generatedCollisionWalls); // Generate visual sprites (purely decorative)
+        ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatforms(layout,
+                tileSize);
+        platformWalls.addAll(generatedCollisionWalls);// Generate visual sprites (purely decorative)
         ArrayList<PlatformGenerator.PlatformSpriteData> visualSprites = PlatformGenerator.generateVisualSprites(layout,
                 tileSize);
 
@@ -353,13 +352,13 @@ public class Level {
      */
     public void generatePlatformsFromLayout(boolean[][] layout, int tileSize, double offsetX, double offsetY) {
         // Clear existing platforms
-        resetPlatformGeneration();
-
-        // Generate single collision box for entire layout with offset (not per tile)
+        resetPlatformGeneration(); // Generate optimized collision rectangles with offset (grouped tiles, not per
+                                   // tile)
         platformWalls.clear();
-        ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatformsWithOffset(layout,
+        ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatformsWithOffset(
+                layout,
                 tileSize, offsetX, offsetY);
-        platformWalls.addAll(generatedCollisionWalls); // Generate visual sprites with offset (purely decorative)
+        platformWalls.addAll(generatedCollisionWalls);// Generate visual sprites with offset (purely decorative)
         ArrayList<PlatformGenerator.PlatformSpriteData> visualSprites = PlatformGenerator
                 .generateVisualSpritesWithOffset(layout, tileSize, offsetX, offsetY);
 
@@ -440,7 +439,7 @@ public class Level {
             }
         }
 
-        // Create single collision box encompassing the entire platform
+        // Create single collision box for the entire platform
         if (minRow != Integer.MAX_VALUE) { // If we found any solid tiles
             double platformX = minCol * tileSize + offsetX;
             double platformY = minRow * tileSize + offsetY;
@@ -452,23 +451,23 @@ public class Level {
                     new Color(0, 0, 0, 0)); // Transparent
             platformWalls.add(platformCollision);
 
-            System.out.println("Created single platform collision box:");
-            System.out.println("  Position: (" + platformX + ", " + platformY + ")");
+            System.out.println("created single platform collision box:");
+            System.out.println("  pos: (" + platformX + ", " + platformY + ")");
             System.out.println("  Size: " + platformWidth + "x" + platformHeight);
         }
 
-        // Generate visual sprites (purely decorative)
+        // Generate visual sprites
         ArrayList<PlatformGenerator.PlatformSpriteData> visualSprites = PlatformGenerator
                 .generateVisualSpritesWithOffset(layout, tileSize, offsetX, offsetY);
 
-        // Store ALL sprites for future additions
+        // Store sprites
         platformSprites.clear();
         platformSprites.addAll(visualSprites);
 
         // Pre-render visual layer
         createPlatformLayer(platformSprites);
 
-        System.out.println("Generated single platform collision with " + platformWalls.size() +
+        System.out.println("platform generated, sz " + platformWalls.size() +
                 " collision walls and " + visualSprites.size() + " visual sprites");
     }
 
@@ -624,8 +623,9 @@ public class Level {
      * @param tileSize Size of each platform tile in pixels (recommended: 15)
      */
     public void addPlatformsFromLayout(boolean[][] layout, int tileSize) {
-        // Generate single collision box for entire layout (not per tile)
-        ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatforms(layout, tileSize);
+        // Generate optimized collision rectangles (grouped tiles, not per tile)
+        ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatforms(layout,
+                tileSize);
         platformWalls.addAll(generatedCollisionWalls);
 
         // Generate visual sprites (purely decorative)
@@ -650,9 +650,12 @@ public class Level {
      * @param offsetX  X offset to apply to all platforms
      * @param offsetY  Y offset to apply to all platforms
      */
-    public void addPlatformsFromLayout(boolean[][] layout, int tileSize, double offsetX, double offsetY) {
-        // Generate single collision box for entire layout with offset (not per tile)
-        ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatformsWithOffset(layout,
+    public void addPlatformsFromLayout(boolean[][] layout, double offsetX, double offsetY) {
+        int tileSize = 15;
+        // Generate optimized collision rectangles with offset (grouped tiles, not per
+        // tile)
+        ArrayList<Wall> generatedCollisionWalls = PlatformGenerator.generateCollisionPlatformsWithOffset(
+                layout,
                 tileSize, offsetX, offsetY);
         platformWalls.addAll(generatedCollisionWalls);
 

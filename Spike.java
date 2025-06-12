@@ -4,29 +4,18 @@ import javax.imageio.ImageIO;
 import java.io.IOException;
 
 public class Spike extends Entity {
-    private long creationTime = 0;
-    private boolean state = true; // Always visible for crystals
     private BufferedImage[] crystalSprites; // sprites 0-2 for crystal sprites
-    
-    // Orientation system
     private boolean isHorizontal = false; // false = vertical (default), true = horizontal
     private boolean isReversed = false; // true = flipped orientation
-    
-    // Crystals are always permanent - no pulsing
-    private boolean isPermanent = true; // Crystals are always permanent (no pulsing)
-    
-    // Crystal sprite selection - randomly pick one sprite per crystal
-    private int selectedSpriteIndex = 0; // Which crystal sprite to use (0-2)    // Performance optimization: Cache transformed sprites
+
+    private int spriteIndex = 0; // Which crystal sprite to use (0-2)    // Performance optimization: Cache transformed sprites
     private BufferedImage cachedCrystalSprite; // Single cached transformed crystal sprite
     private boolean spritesNeedUpdate = true; // Flag to update cached sprites
 
     public Spike(double x, double y, double width, double height) {
         super(x, y, width, height, "");
-        this.creationTime = System.nanoTime();
-        this.state = true;
-        
         // Randomly select one of the 3 crystal sprites
-        this.selectedSpriteIndex = (int)(Math.random() * 3);
+        this.spriteIndex = (int)(Math.random() * 3);
 
         // Load crystal sprites
         loadCrystalSprites();
@@ -68,10 +57,10 @@ public class Spike extends Entity {
             return;
 
         // Only cache the selected sprite
-        if (crystalSprites != null && selectedSpriteIndex < crystalSprites.length && 
-            crystalSprites[selectedSpriteIndex] != null) {
+        if (crystalSprites != null && spriteIndex < crystalSprites.length && 
+            crystalSprites[spriteIndex] != null) {
             
-            BufferedImage sprite = crystalSprites[selectedSpriteIndex];
+            BufferedImage sprite = crystalSprites[spriteIndex];
 
             // Scale sprite to exactly match hitbox dimensions
             int targetWidth = (int) width;

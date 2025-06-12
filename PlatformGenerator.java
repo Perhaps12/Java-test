@@ -5,9 +5,7 @@ import java.util.ArrayList;
 import javax.imageio.ImageIO;
 
 /**
- * PlatformGenerator handles generation of platform tiles with appropriate
- * sprites and rotations
- * based on their position and neighboring tiles.
+ * Handles generation of platform tiles
  */
 public class PlatformGenerator {
     private static BufferedImage[] platformSprites;
@@ -21,12 +19,11 @@ public class PlatformGenerator {
      * Load all platform sprites from resources
      */
     private static void loadPlatformSprites() {
-        platformSprites = new BufferedImage[10]; // 10 platform sprites (0-9)
+        platformSprites = new BufferedImage[10]; // 10 platform sprites
 
         try {
             for (int i = 0; i < 10; i++) {
-                // Use zero-based indexing to match sprite file names (sprite_00.png to
-                // sprite_09.png)
+                // Use zero-based indexing to match sprite file names
                 String path = String.format("/Sprites/Platforms (1)/sprite_0%d.png", i);
                 platformSprites[i] = ImageIO.read(PlatformGenerator.class.getResourceAsStream(path));
                 System.out.println("Loaded platform sprite: " + path);
@@ -37,9 +34,7 @@ public class PlatformGenerator {
     }
 
     /**
-     * Generate platform configuration from a binary array representing solid vs
-     * empty areas.
-     * This matches the exact algorithm provided by the user.
+     * Generate platform configuration from a binary array
      * 
      * @param arr 2D array where 1 = solid platform, 0 = empty space
      * @return 3D array containing [platformID, rotationAngle] for each position
@@ -229,37 +224,6 @@ public class PlatformGenerator {
     }
 
     /**
-     * Generate platforms with custom x,y coordinates for individual pieces
-     * This allows precise positioning of each platform piece
-     * 
-     * @param platformPieces List of PlatformPiece objects with custom coordinates
-     *                       and properties
-     * @return List of Wall objects representing the platforms
-     */
-    public static ArrayList<Wall> generatePlatformsWithCoordinates(ArrayList<PlatformPiece> platformPieces) {
-        ArrayList<Wall> walls = new ArrayList<>();
-
-        if (platformPieces == null || platformPieces.isEmpty()) {
-            return walls;
-        }
-
-        for (PlatformPiece piece : platformPieces) {
-            // Ensure spriteIndex is within valid range (0-9)
-            int spriteIndex = Math.max(0, Math.min(9, piece.spriteIndex));
-
-            // Format the sprite path
-            String spritePath = String.format("/Sprites/Platforms (1)/sprite_0%d.png", spriteIndex);
-
-            // Create platform wall with sprite and rotation at specified coordinates
-            Wall platformWall = new Wall(piece.x, piece.y, piece.width, piece.height, spritePath, piece.rotation);
-            walls.add(platformWall);
-        }
-
-        System.out.println("Generated " + walls.size() + " platforms with custom coordinates");
-        return walls;
-    }
-
-    /**
      * Generate individual platform pieces from a layout with custom offset
      * coordinates
      * This combines the algorithm with custom positioning
@@ -321,147 +285,65 @@ public class PlatformGenerator {
         return walls;
     }
 
-    /**
-     * Create individual platform pieces with full control over positioning and
-     * properties
-     * 
-     * @param pieces Array of PlatformPieceData with coordinates, sprite, and
-     *               rotation info
-     * @return List of Wall objects representing the platforms
-     */
-    public static ArrayList<Wall> createIndividualPlatformPieces(PlatformPieceData[] pieces) {
-        ArrayList<Wall> walls = new ArrayList<>();
+    // Deprecated since this creates a wall for each solid tile, render times 10
+    // times slower
+    // public static ArrayList<Wall> generateCollisionPlatforms(boolean[][] layout,
+    // int tileSize) {
+    // ArrayList<Wall> walls = new ArrayList<>();
 
-        if (pieces == null || pieces.length == 0) {
-            System.err.println("No platform piece data provided!");
-            return walls;
-        }
+    // if (layout == null || layout.length == 0 || layout[0].length == 0) {
+    // System.err.println("Invalid layout provided!");
+    // return walls;
+    // }
 
-        System.out.println("Creating " + pieces.length + " individual platform pieces");
+    // // Create individual collision walls for each solid tile
+    // for (int y = 0; y < layout.length; y++) {
+    // for (int x = 0; x < layout[y].length; x++) {
+    // if (layout[y][x]) { // Solid tile
+    // // Convert tile coordinates to world coordinates
+    // double tileX = x * tileSize;
+    // double tileY = y * tileSize;
 
-        for (PlatformPieceData pieceData : pieces) {
-            // Ensure spriteIndex is within valid range (0-9)
-            int spriteIndex = Math.max(0, Math.min(9, pieceData.spriteIndex));
+    // // Create invisible collision wall for this tile
+    // Wall tileCollision = new Wall(tileX, tileY, tileSize, tileSize,
+    // new Color(0, 0, 0, 0)); // Transparent
+    // walls.add(tileCollision);
+    // }
+    // }
+    // }
 
-            // Format the sprite path
-            String spritePath = String.format("/Sprites/Platforms (1)/sprite_0%d.png", spriteIndex);
+    // System.out.println("Generated " + walls.size() + " individual collision walls
+    // (one per solid tile)");
+    // return walls;
+    //
 
-            // Create platform wall with all custom properties
-            Wall platformWall = new Wall(
-                    pieceData.x,
-                    pieceData.y,
-                    pieceData.width,
-                    pieceData.height,
-                    spritePath,
-                    pieceData.rotation);
-            walls.add(platformWall);
-        }
+    // public static ArrayList<Wall>
+    // generateCollisionPlatformsWithOffset(boolean[][] layout, int tileSize,
+    // double offsetX, double offsetY) {
+    // ArrayList<Wall> walls = new ArrayList<>();
 
-        System.out.println("Created " + walls.size() + " individual platform pieces");
-        return walls;
-    }
+    // if (layout == null || layout.length == 0 || layout[0].length == 0) {
+    // System.err.println("Invalid layout provided!");
+    // return walls;
+    // }
 
-    /**
-     * Generate single collision platform (invisible wall) for entire layout
-     * Creates ONE Wall object per platform layout, not per tile
-     * 
-     * @param layout   2D array where 0 = empty space, 1 = platform/wall
-     * @param tileSize Size of each platform tile in pixels
-     * @return List of Wall objects representing collision platforms (should contain
-     *         1 wall)
-     */
-    public static ArrayList<Wall> generateCollisionPlatforms(boolean[][] layout, int tileSize) {
-        ArrayList<Wall> walls = new ArrayList<>();
+    // // Create individual collision walls for each solid tile with offset
+    // for (int y = 0; y < layout.length; y++) {
+    // for (int x = 0; x < layout[y].length; x++) {
+    // if (layout[y][x]) { // Solid tile
+    // // Convert tile coordinates to world coordinates with offset
+    // double tileX = (x * tileSize) + offsetX;
+    // double tileY = (y * tileSize) + offsetY;
 
-        if (layout == null || layout.length == 0 || layout[0].length == 0) {
-            System.err.println("Invalid layout provided!");
-            return walls;
-        }
-
-        // Find bounding box of the entire platform layout
-        int minRow = Integer.MAX_VALUE, maxRow = Integer.MIN_VALUE;
-        int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE;
-
-        // Find the bounds of all solid tiles
-        for (int y = 0; y < layout.length; y++) {
-            for (int x = 0; x < layout[y].length; x++) {
-                if (layout[y][x]) {
-                    minRow = Math.min(minRow, y);
-                    maxRow = Math.max(maxRow, y);
-                    minCol = Math.min(minCol, x);
-                    maxCol = Math.max(maxCol, x);
-                }
-            }
-        }
-
-        // Create single collision box encompassing the entire platform
-        if (minRow != Integer.MAX_VALUE) { // If we found any solid tiles
-            double platformX = minCol * tileSize;
-            double platformY = minRow * tileSize;
-            double platformWidth = (maxCol - minCol + 1) * tileSize;
-            double platformHeight = (maxRow - minRow + 1) * tileSize;
-
-            // Create single invisible collision wall for entire platform
-            Wall platformCollision = new Wall(platformX, platformY, platformWidth, platformHeight,
-                    new Color(0, 0, 0, 0)); // Transparent
-            walls.add(platformCollision);
-        }
-
-        System.out.println("Generated " + walls.size() + " collision platform (single box for entire layout)");
-        return walls;
-    }
-
-    /**
-     * Generate single collision platform with offset
-     * Creates ONE Wall object per platform layout, not per tile
-     * 
-     * @param layout   2D array where 0 = empty space, 1 = platform/wall
-     * @param tileSize Size of each platform tile in pixels
-     * @param offsetX  X offset to apply to the platform
-     * @param offsetY  Y offset to apply to the platform
-     * @return List of Wall objects representing collision platforms (should contain
-     *         1 wall)
-     */
-    public static ArrayList<Wall> generateCollisionPlatformsWithOffset(boolean[][] layout, int tileSize,
-            double offsetX, double offsetY) {
-        ArrayList<Wall> walls = new ArrayList<>();
-
-        if (layout == null || layout.length == 0 || layout[0].length == 0) {
-            System.err.println("Invalid layout provided!");
-            return walls;
-        }
-
-        // Find bounding box of the entire platform layout
-        int minRow = Integer.MAX_VALUE, maxRow = Integer.MIN_VALUE;
-        int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE; // Find the bounds of all solid tiles
-        for (int y = 0; y < layout.length; y++) {
-            for (int x = 0; x < layout[y].length; x++) {
-                if (layout[y][x]) {
-                    minRow = Math.min(minRow, y);
-                    maxRow = Math.max(maxRow, y);
-                    minCol = Math.min(minCol, x);
-                    maxCol = Math.max(maxCol, x);
-                }
-            }
-        }
-
-        // Create single collision box encompassing the entire platform with offset
-        if (minRow != Integer.MAX_VALUE) { // If we found any solid tiles
-            double platformX = (minCol * tileSize) + offsetX;
-            double platformY = (minRow * tileSize) + offsetY;
-            double platformWidth = (maxCol - minCol + 1) * tileSize;
-            double platformHeight = (maxRow - minRow + 1) * tileSize;
-
-            // Create single invisible collision wall for entire platform
-            Wall platformCollision = new Wall(platformX, platformY, platformWidth, platformHeight,
-                    new Color(0, 0, 0, 0)); // Transparent
-            walls.add(platformCollision);
-        }
-
-        System.out.println(
-                "Generated " + walls.size() + " collision platform with offset (single box for entire layout)");
-        return walls;
-    }
+    // // Create invisible collision wall for this tile
+    // Wall tileCollision = new Wall(tileX, tileY, tileSize, tileSize,
+    // new Color(0, 0, 0, 0)); // Transparent
+    // walls.add(tileCollision);
+    // }
+    // }
+    // }
+    // return walls;
+    // }
 
     /**
      * Generate visual sprite data using the platform configuration algorithm
@@ -654,73 +536,267 @@ public class PlatformGenerator {
     }
 
     /**
-     * Create a simple rectangular platform block
+     * Generate optimized collision platforms by grouping adjacent tiles into larger
+     * rectangles
      * 
-     * @param x           X coordinate
-     * @param y           Y coordinate
-     * @param width       Platform width
-     * @param height      Platform height
-     * @param spriteIndex Sprite to use (0-9)
-     * @return Single PlatformPiece object
+     * @param layout   2D array where false = empty space, true = platform/wall
+     * @param tileSize Size of each platform tile in pixels
+     * @return List of Wall objects representing optimized collision platforms
      */
-    public static PlatformPiece createSimplePlatformBlock(double x, double y, double width, double height,
-            int spriteIndex) {
-        return new PlatformPiece(x, y, width, height, spriteIndex, 0); // 0 rotation by default
+    public static ArrayList<Wall> generateCollisionPlatforms(boolean[][] layout, int tileSize) {
+        return generateCollisionPlatformsWithOffset(layout, tileSize, 0, 0);
     }
 
     /**
-     * Generate platform blocks from a small layout that can be added to existing
-     * levels
-     * This creates individual PlatformPiece objects that can be added anywhere
+     * Generate optimized collision platforms with offset by grouping adjacent tiles
+     * into larger rectangles. Uses fast scanning algorithm for better performance.
      * 
-     * @param layout   2D array where 0 = empty space, 1 = platform/wall
+     * @param layout   2D array where false is space true is wall
      * @param tileSize Size of each platform tile in pixels
-     * @param offsetX  X offset for the entire block group
-     * @param offsetY  Y offset for the entire block group
-     * @return List of PlatformPiece objects that can be added to a level
+     * @param offsetX  X offset to apply to all platforms
+     * @param offsetY  Y offset to apply to all platforms
+     * @return List of Wall objects representing optimized collision platforms
      */
-    public static ArrayList<PlatformPiece> generatePlatformBlocks(boolean[][] layout, int tileSize,
+    public static ArrayList<Wall> generateCollisionPlatformsWithOffset(boolean[][] layout, int tileSize,
             double offsetX, double offsetY) {
-        ArrayList<PlatformPiece> blocks = new ArrayList<>();
+        ArrayList<Wall> walls = new ArrayList<>();
 
         if (layout == null || layout.length == 0 || layout[0].length == 0) {
             System.err.println("Invalid layout provided!");
-            return blocks;
+            return walls;
         }
 
         int height = layout.length;
         int width = layout[0].length;
 
-        // Generate platform configuration using the algorithm
-        int[][][] platformConfig = generatePlatformConfig(layout); // Create PlatformPiece objects for each solid tile
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                if (!layout[y][x]) {
-                    continue; // Skip empty spaces
+        // Use faster algorithm for larger layouts
+        if (width * height > 1000) {
+            return generateCollisionPlatformsOptimized(layout, tileSize, offsetX, offsetY);
+        }
+
+        // Create a copy of the layout to mark processed tiles
+        boolean[][] processed = new boolean[height][width];
+
+        // Process each unprocessed solid tile
+        for (int startY = 0; startY < height; startY++) {
+            for (int startX = 0; startX < width; startX++) {
+                if (!layout[startY][startX] || processed[startY][startX]) {
+                    continue; // Skip empty spaces or already processed tiles
                 }
 
-                int platformId = platformConfig[y][x][0];
-                int rotation = platformConfig[y][x][1];
+                // Find the largest rectangle starting from this position
+                Rectangle rect = findLargestRectangle(layout, processed, startX, startY, width, height);
 
-                // Convert from 1-based algorithm IDs to 0-based sprite indices
-                int spriteIndex = platformId - 1;
-                if (platformId == 10) {
-                    spriteIndex = 8; // Convert temp inner (10) to sprite 8
+                if (rect != null) {
+                    // Convert tile coordinates to world coordinates with offset
+                    double worldX = (rect.x * tileSize) + offsetX;
+                    double worldY = (rect.y * tileSize) + offsetY;
+                    double worldWidth = rect.width * tileSize;
+                    double worldHeight = rect.height * tileSize;
+
+                    // Create optimized collision wall
+                    Wall optimizedWall = new Wall(worldX, worldY, worldWidth, worldHeight,
+                            new Color(0, 0, 0, 0)); // Transparent
+                    walls.add(optimizedWall);
+
+                    // Mark all tiles in this rectangle as processed
+                    markRectangle(processed, rect);
                 }
-
-                // Ensure spriteIndex is within valid range (0-9)
-                spriteIndex = Math.max(0, Math.min(9, spriteIndex));
-
-                // Convert tile coordinates to world coordinates with offset
-                double worldX = (x * tileSize) + offsetX;
-                double worldY = (y * tileSize) + offsetY;
-
-                // Create platform piece
-                blocks.add(new PlatformPiece(worldX, worldY, tileSize, tileSize, spriteIndex, rotation));
             }
         }
 
-        System.out.println("Generated " + blocks.size() + " platform blocks from layout");
-        return blocks;
+        System.out.println("Generated " + walls.size() + " optimized collision platforms (grouped from "
+                + countSolidTiles(layout) + " individual tiles)");
+        return walls;
+    }
+
+    /**
+     * Highly optimized collision platform generation for large layouts
+     * Uses scan-line algorithm with connected component analysis
+     */
+    private static ArrayList<Wall> generateCollisionPlatformsOptimized(boolean[][] layout, int tileSize,
+            double offsetX, double offsetY) {
+        ArrayList<Wall> walls = new ArrayList<>();
+        int height = layout.length;
+        int width = layout[0].length;
+
+        boolean[][] processed = new boolean[height][width];
+
+        // Use scan-line algorithm to find rectangular regions efficiently
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (!layout[y][x] || processed[y][x]) {
+                    continue;
+                }
+
+                // Find horizontal extent
+                int endX = x;
+                while (endX < width && layout[y][endX] && !processed[y][endX]) {
+                    endX++;
+                }
+
+                // Find vertical extent for this horizontal strip
+                int endY = y + 1;
+                boolean canExtendVertically = true;
+
+                while (endY < height && canExtendVertically) {
+                    // Check if entire horizontal strip can be extended down
+                    for (int checkX = x; checkX < endX; checkX++) {
+                        if (!layout[endY][checkX] || processed[endY][checkX]) {
+                            canExtendVertically = false;
+                            break;
+                        }
+                    }
+                    if (canExtendVertically) {
+                        endY++;
+                    }
+                }
+
+                // Create rectangle for this region
+                int rectWidth = endX - x;
+                int rectHeight = endY - y;
+
+                double worldX = (x * tileSize) + offsetX;
+                double worldY = (y * tileSize) + offsetY;
+                double worldWidth = rectWidth * tileSize;
+                double worldHeight = rectHeight * tileSize;
+
+                Wall optimizedWall = new Wall(worldX, worldY, worldWidth, worldHeight,
+                        new Color(0, 0, 0, 0)); // Transparent
+                walls.add(optimizedWall);
+
+                // Mark this rectangle as processed
+                for (int markY = y; markY < endY; markY++) {
+                    for (int markX = x; markX < endX; markX++) {
+                        processed[markY][markX] = true;
+                    }
+                }
+            }
+        }
+
+        System.out.println("Generated " + walls.size()
+                + " highly optimized collision platforms (scan-line algorithm, grouped from "
+                + countSolidTiles(layout) + " individual tiles)");
+        return walls;
+    }
+
+    /**
+     * Find the largest rectangle of solid tiles
+     * https://www.geeksforgeeks.org/largest-rectangular-area-in-a-histogram-using-stack/ reference
+     * 
+     * @param layout    2D layout array
+     * @param processed 2D array tracking which tiles are already processed
+     * @param startX    Starting X coordinate
+     * @param startY    Starting Y coordinate
+     * @param width     Total width of the layout
+     * @param height    Total height of the layout
+     * @return Rectangle representing the largest solid rectangle found, or null if
+     *         none
+     */
+    private static Rectangle findLargestRectangle(boolean[][] layout, boolean[][] processed,
+            int startX, int startY, int width, int height) { // O(r*c) tc
+        // Build height histogram for each row
+        int[] heights = new int[width - startX];
+        Rectangle bestRect = new Rectangle(startX, startY, 1, 1);
+        int bestArea = 1;
+
+        for (int y = startY; y < height; y++) {
+            // Update histogram heights for current row
+            for (int x = startX; x < width; x++) {
+                int idx = x - startX;
+                if (layout[y][x] && !processed[y][x]) {
+                    heights[idx]++;
+                } else {
+                    heights[idx] = 0;
+                }
+            }
+
+            // Find largest rectangle in current histogram
+            Rectangle rect = largestRectangleInHistogram(heights, startX, y);
+            int area = rect.width * rect.height;
+
+            if (area > bestArea) {
+                bestArea = area;
+                bestRect = rect;
+            }
+        }
+
+        return bestRect;
+    }
+
+    /**
+     * Largest rectangle in histogram using stack-based algorithm
+     * O(n) time complexity
+     */
+    private static Rectangle largestRectangleInHistogram(int[] heights, int baseX, int currentY) {
+        java.util.Stack<Integer> stack = new java.util.Stack<>();
+        int maxArea = 0;
+        Rectangle bestRect = new Rectangle(baseX, currentY, 1, 1);
+
+        for (int i = 0; i <= heights.length; i++) {
+            int h = (i == heights.length) ? 0 : heights[i];
+
+            // Maintain a non-decreasing stack of heights
+            while (!stack.isEmpty() && h < heights[stack.peek()]) {
+                int height = heights[stack.pop()]; // Height of the rectangle
+                int width = stack.isEmpty() ? i : i - stack.peek() - 1;
+                int area = height * width;
+
+                if (area > maxArea) {
+                    maxArea = area;
+                    int startX = stack.isEmpty() ? 0 : stack.peek() + 1;
+                    bestRect = new Rectangle(baseX + startX, currentY - height + 1, width, height);
+                }
+            }
+            stack.push(i);
+        }
+
+        return bestRect;
+    }
+
+    /**
+     * Mark all tiles in a rectangle as processed
+     * 
+     * @param processed 2D array tracking processed tiles
+     * @param rect      Rectangle to mark as processed
+     */
+    private static void markRectangle(boolean[][] processed, Rectangle rect) {
+        for (int y = rect.y; y < rect.y + rect.height; y++) {
+            for (int x = rect.x; x < rect.x + rect.width; x++) {
+                processed[y][x] = true;
+            }
+        }
+    }
+
+    /**
+     * Count the total number of solid tiles in a layout
+     * 
+     * @param layout 2D layout array
+     * @return Number of solid (true) tiles
+     */
+    private static int countSolidTiles(boolean[][] layout) {
+        int count = 0;
+        for (int y = 0; y < layout.length; y++) {
+            for (int x = 0; x < layout[y].length; x++) {
+                if (layout[y][x]) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Internal use for rectangle
+     */
+    private static class Rectangle {
+        public int x, y, width, height;
+
+        public Rectangle(int x, int y, int width, int height) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
     }
 }

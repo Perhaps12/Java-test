@@ -102,6 +102,64 @@ public abstract class Entity extends GameObject { // Image and rendering
     }
 
     /**
+     * Apply physics with high-velocity collision detection to prevent clipping
+     * Uses raycast-like approach for fast-moving entities
+     */
+    protected void applyPhysicsWithCollisionStepping(double maxStepSize) {
+        long currentTime = System.nanoTime();
+        double deltaTime = (currentTime - lastUpdateTime) / 1_000_000_000.0; // convert to seconds
+        lastUpdateTime = currentTime;
+
+        // Apply acceleration to velocity
+        velocity.add(acceleration.getX() * deltaTime, acceleration.getY() * deltaTime);
+
+        // Calculate intended movement
+        double moveX = velocity.getX() * deltaTime;
+        double moveY = velocity.getY() * deltaTime;
+
+        // Calculate total movement distance
+        double totalDistance = Math.sqrt(moveX * moveX + moveY * moveY);
+
+        // If moving fast, break movement into smaller steps
+        if (totalDistance > maxStepSize) {
+            int steps = (int) Math.ceil(totalDistance / maxStepSize);
+            double stepX = moveX / steps;
+            double stepY = moveY / steps;
+
+            // Move in small increments, checking for collisions each step
+            for (int i = 0; i < steps; i++) {
+                double oldX = x;
+                double oldY = y;
+
+                // Take a small step
+                x += stepX;
+                y += stepY;
+
+                // Check for wall collisions after each step
+                boolean collided = false;
+                for (Wall wall : GameEngine.getWalls()) {
+                    if (isCollidingWithWall(wall)) {
+                        // Collision detected, handle it and stop movement
+                        x = oldX; // Revert position
+                        y = oldY;
+                        handleWallCollision(wall);
+                        collided = true;
+                        break;
+                    }
+                }
+
+                if (collided) {
+                    break; // Stop movement if we hit something
+                }
+            }
+        } else {
+            // Normal movement for slow speeds
+            x += moveX;
+            y += moveY;
+        }
+    }
+
+    /**
      * Check if this entity is colliding with a wall
      */
     protected boolean isCollidingWithWall(Wall wall) {

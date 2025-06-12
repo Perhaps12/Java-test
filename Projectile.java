@@ -9,6 +9,11 @@ public class Projectile extends Entity {
     private long creationTime;
     private Vector2D velocity; // Initial velocity of the projectile
 
+    // Death screen effect variables
+    private double initX = 0; // Initial X position for death effect
+    private double initY = 0; // Initial Y position for death effect
+    private double scale = 1.0; // Scale factor for death effect
+
     /**
      * Create a new projectile
      */
@@ -17,7 +22,7 @@ public class Projectile extends Entity {
 
         this.ID = projectileID;
         this.velocity = new Vector2D(initialVelocity);
-        this.creationTime = System.nanoTime();        // Set properties based on projectile type
+        this.creationTime = System.nanoTime(); // Set properties based on projectile type
         switch (projectileID) {
             // Horizontal melee attack
             case 1 -> {
@@ -46,12 +51,18 @@ public class Projectile extends Entity {
                 setSpriteSize(70, 56); // Visual sprite size
                 setHitboxSize(35, 28); // Smaller hitbox for precision
                 direction = GameEngine.getPlayer() != null ? GameEngine.getPlayer().getDirection() : 1;
-            }
-            // Player clone
+            } // Player clone
             case 5 -> {
                 spritePath = "/Sprites/O-4.png";
                 setSpriteSize(50, 74); // Visual sprite size
                 setHitboxSize(40, 60); // Slightly smaller hitbox than visual
+            } // Death screen effect circles
+            case 6 -> {
+                // No sprite needed - will draw white circles manually
+                setSpriteSize(30, 30); // Small initial size
+                setHitboxSize(30, 30); // Same hitbox as visual
+                // Store initial position and scale in velocity for the effect
+                // velocity.x = logDistance, velocity.y = angle, scale stored separately
             }
             // Default
             default -> {
@@ -60,10 +71,28 @@ public class Projectile extends Entity {
                 setHitboxSize(48, 24); // Smaller hitbox
                 acceleration.setY(0.9); // Apply gravity to this projectile type
             }
-        }
-
-        // Load the sprite
+        } // Load the sprite
         loadSprite();
+    }
+
+    /**
+     * Create a death screen effect projectile
+     */
+    public Projectile(double deathX, double deathY, double angle, double initialLogDist) {
+        super(deathX, deathY, 30, 30, "");
+
+        this.ID = 6; // Death screen effect
+        this.velocity = new Vector2D(initialLogDist, angle); // Store logDist and angle in velocity
+        this.creationTime = System.nanoTime();
+        this.initX = deathX; // Store initial death position
+        this.initY = deathY;
+        this.scale = 1.0;
+
+        // Set up death effect projectile - no sprite needed, we'll draw white circles
+        setSpriteSize(30, 30); // Small initial size
+        setHitboxSize(30, 30); // Same hitbox as visual
+
+        // Don't load sprite for death effect - we'll draw circles manually
     }
 
     @Override
@@ -109,6 +138,32 @@ public class Projectile extends Entity {
                 // Ranged projectile moves in the direction it was fired
                 x += velocity.getX();
             }
+            case 6 -> {
+                // Death screen effect - treat velocity as (log(distance), angle) instead of
+                // actual velocity
+                // Summon in 45deg intervals expand outward following logarithmic equation
+                double logDist = velocity.getX();
+                double dist = Math.log10(logDist) / Math.log10(1.07); // Calculate distance from log as per your formula
+                double angle = velocity.getY();
+
+                // Calculate new position based on initial death position
+                x = initX + dist * Math.cos(Math.toRadians(angle));
+                y = initY + dist * Math.sin(Math.toRadians(angle));
+
+                // Update angle and log distance for next frame
+                double lifetime = (System.nanoTime() - creationTime) / 1_000_000_000.0; 
+                angle = (angle + (0.7 - lifetime) * 6) % 360;
+                logDist += 40;
+                scale += 2;
+
+                // Update velocity for next frame
+                velocity.setX(logDist);
+                velocity.setY(angle);
+
+                // Update visual size based on scale
+                setSpriteSize((int) (30 * scale / 100.0), (int) (30 * scale / 100.0)); // Scale down the growth
+                setHitboxSize((int) (30 * scale / 100.0), (int) (30 * scale / 100.0));
+            }
         }
     }
 
@@ -116,9 +171,10 @@ public class Projectile extends Entity {
      * Handle collision with walls
      */
     private void checkWallCollisions() {
-        for (Wall wall : GameEngine.getWalls()) {
-            if (isCollidingWithWall(wall)) {
-                // For most projectiles, deactivate on wall collision
+        if (ID != 6) {
+            for (Wall wall : GameEngine.getWalls()) {
+                if (isCollidingWithWall(wall)) {
+                    // For most projectiles, deactivate on wall collision
                 if (ID != 5) { // Except player clone type
                     setActive(false);
                 } else {
@@ -129,14 +185,13 @@ public class Projectile extends Entity {
         if (ID >= 1 && ID <= 4) {
             for (Npc npc : GameEngine.getNpcs()) {
                 if (isColliding(npc)) {
-                    // Handle damage to NPC here if needed
-                    // Special case: downward strike triggers pogo
                     if (ID == 3 && GameEngine.getPlayer() != null) {
                         GameEngine.getPlayer().setPogo(true);
                     }
                 }
             }
         }
+    }
     }
 
     /**
@@ -156,7 +211,11 @@ public class Projectile extends Entity {
                 if (lifetime > 2.0)
                     setActive(false); // Longer duration for ranged attacks
             }
-            
+            case 6 -> {
+                if (lifetime > 0.7)
+                    setActive(false);
+            }
+
         }
 
         // Deactivate if off-screen
@@ -172,5 +231,27 @@ public class Projectile extends Entity {
 
     public int getDirection() {
         return direction;
+    }
+
+    @Override
+    public void draw(Graphics g) {
+        if (!isActive())
+            return;
+
+        // Special rendering for death screen effect
+        if (ID == 6) {
+            Graphics2D g2d = (Graphics2D) g;
+            g2d.setColor(Color.WHITE);
+
+            // Draw a filled white circle
+            int diameter = (int) spriteWidth;
+            int drawX = (int) (x - diameter / 2);
+            int drawY = (int) (y - diameter / 2);
+
+            g2d.fillOval(drawX, drawY, diameter, diameter);
+        } else {
+            // Use default sprite rendering for other projectiles
+            super.draw(g);
+        }
     }
 }
