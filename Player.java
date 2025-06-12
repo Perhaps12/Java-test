@@ -634,6 +634,9 @@ public class Player extends Entity {
                     // attempts
                     shot[2] = true;
 
+                    // Trigger clone shake and red tint effect
+                    GameEngine.triggerCloneShake();
+
                     // Optional: Add a different visual/audio feedback to indicate failed swap
                     Camera camera = Camera.getInstance();
                     camera.shake(3, 5, Camera.ShakeType.RANDOM); // Smaller shake to indicate failure

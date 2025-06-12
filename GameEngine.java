@@ -39,8 +39,8 @@ public class GameEngine { // Game entities
     public static void initializeGame() {
         currentLevel = new Level("Main Level", LEVEL_WIDTH, LEVEL_HEIGHT, 10);
         currentLevel.setPlayerSpawnPoint(50, -100);
-        createLevelLayouts(2);
-        createPlatformLayout(2);
+        createLevelLayouts(1);
+        createPlatformLayout(1);
         Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
         player = new Player("/Sprites/Character/Idle/sprite_0.png", playerSpawn.getX(), playerSpawn.getY()); // Create
                                                                                                              // NPCs at
@@ -48,10 +48,10 @@ public class GameEngine { // Game entities
                                                                                                              // spawn
                                                                                                              // points
         ArrayList<Vector2D> npcSpawns = currentLevel.getNpcSpawnPoints();
-        if (npcSpawns.size() > 0) {
-            Vector2D coinSpawn = npcSpawns.get(0);
-            npcs.add(new Npc(coinSpawn.getX(), coinSpawn.getY(), 0)); // Coin NPC
-        }
+        // if (npcSpawns.size() > 0) {
+        // Vector2D coinSpawn = npcSpawns.get(0);
+        // npcs.add(new Npc(coinSpawn.getX(), coinSpawn.getY(), 0)); // Coin NPC
+        // }
 
         if (npcSpawns.size() > 1) {
             Vector2D cloneSpawn = npcSpawns.get(1);
@@ -67,7 +67,7 @@ public class GameEngine { // Game entities
                     reader = new BufferedReader(new FileReader("Static//Level1.txt"));
                 }
 
-                case 2 ->{
+                case 2 -> {
                     reader = new BufferedReader(new FileReader("Static//Level2.txt"));
                 }
                 default -> {
@@ -118,23 +118,25 @@ public class GameEngine { // Game entities
                 currentLevel.addPlatformsFromLayout(levelLayout.get(3), 1400, -600);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1350, 150);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(4), 1650, -500);
-                currentLevel.addPlatformsFromLayout(levelLayout.get(3), 1700, 130);
-                currentLevel.addPlatformsFromLayout(levelLayout.get(1), 1650, 0);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(3), 1700, 100);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(1), 1650, -60);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(5), 1900, 380);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(0), 2100, -60);
                 addPermanentDualHeadLaser(1421.5, -75, 30, 225, false, false);
+                addPermanentDualHeadLaser(1800, -30, 300, 30, true, false);
                 addSpike(700, -75, 36, 36, false, false);
 
             }
 
-            case 2 ->{
+            case 2 -> {
                 currentLevel.addPlatformsFromLayout(levelLayout.get(0), -45, 0);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(1), 700, -375);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 625, -30);
                 addSpike(675, -200, 50, 50, true, true);
                 addSpike(675, -250, 50, 50, true, true);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 625, 150);
-                addLaser(playerDeathX, playerDeathY, playerDeathX, playerDeathX, isDeathScreenActive, isDeathScreenActive);
+                addLaser(playerDeathX, playerDeathY, playerDeathX, playerDeathX, isDeathScreenActive,
+                        isDeathScreenActive);
             }
             default -> {
                 System.out.println("No platform layout found for ID: " + ID);
@@ -230,15 +232,16 @@ public class GameEngine { // Game entities
             // Draw the pre-rendered platform layer
             currentLevel.drawPlatformLayer(g2d, Camera.getInstance());
             currentLevel.drawSpikes(g);
-        } // Draw clone character under water effects (if it exists)
+        } // Check if player has inverted gravity (bottom side)
+
+        // Draw clone character
         for (Npc npc : npcs) {
             if (npc.getID() == 1) { // Clone character
                 npc.draw(g);
             }
         }
 
-        // Draw water boundary effect (behind everything else except clone)
-        WaterBoundary.getInstance().draw(g2d); // Draw player (only if active)
+        // Draw player (only if active)
         if (player != null && player.isActive()) {
             player.draw(g);
         }
@@ -248,52 +251,40 @@ public class GameEngine { // Game entities
             if (npc.getID() != 1) { // All NPCs except clone
                 npc.draw(g);
             }
-        } // Draw projectiles
+        }
+
+        // Draw projectiles
         for (Projectile p : projectiles) {
             p.draw(g);
-            // // Draw hitbox around projectile
-            // g2d.setColor(Color.RED);
-            // g2d.setStroke(new BasicStroke(2.0f));
-            // double[] box = p.box();
-            // double left = box[0];
-            // double right = box[1];
-            // double top = box[2];
-            // double bottom = box[3];
-            // int boxWidth = (int) (right - left);
-            // int boxHeight = (int) (bottom - top);
-            // g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
-        } // Draw lasers
+        }
+        
+        // Draw lasers
         for (Laser laser : lasers) {
-            laser.draw(g); // Always try to draw (laser handles visibility internally)
+            laser.draw(g);
+            // Only draw hitbox when laser is dangerous
+            if (laser.isDangerous()) {
+            g2d.setColor(Color.RED);
+            g2d.setStroke(new BasicStroke(2.0f));
+            double[] box = laser.box();
+            double left = box[0];
+            double right = box[1];
+            double top = box[2];
+            double bottom = box[3];
+            int boxWidth = (int) (right - left);
+            int boxHeight = (int) (bottom - top);
+            g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
+            }
+            // hitbox
+            
+        }
 
-            // // Only draw hitbox when laser is dangerous
-            // if (laser.isDangerous()) {
-            // g2d.setColor(Color.RED);
-            // g2d.setStroke(new BasicStroke(2.0f));
-            // double[] box = laser.box();
-            // double left = box[0];
-            // double right = box[1];
-            // double top = box[2];
-            // double bottom = box[3];
-            // int boxWidth = (int) (right - left);
-            // int boxHeight = (int) (bottom - top);
-            // g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
-            // }
-        } // Draw spikes
+        // Draw spikes
         for (Spike spike : spikes) {
             spike.draw(g); // Always try to draw (spike handles visibility internally)
-
-            // g2d.setColor(Color.MAGENTA);
-            // g2d.setStroke(new BasicStroke(2.0f));
-            // double[] box = spike.box();
-            // double left = box[0];
-            // double right = box[1];
-            // double top = box[2];
-            // double bottom = box[3];
-            // int boxWidth = (int) (right - left);
-            // int boxHeight = (int) (bottom - top);
-            // g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
         }
+
+        WaterBoundary.getInstance().draw(g2d);
+
         // Remove camera transform for ui
         Camera.getInstance().removeTransform(g2d);
     }
@@ -416,6 +407,10 @@ public class GameEngine { // Game entities
             // Hide the player during death screen
             player.setActive(false);
 
+            // Add intense camera rumble on death
+            Camera camera = Camera.getInstance();
+            camera.shake(35, 25, Camera.ShakeType.RANDOM); // Strong rumble for death
+
             // Create death screen effect projectiles in 45-degree intervals
             for (int i = 0; i < 8; i++) {
                 double angle = i * 45.0; // 45-degree intervals (0, 45, 90, 135, 180, 225, 270, 315)
@@ -532,6 +527,18 @@ public class GameEngine { // Game entities
         laser.setPermanent(true);
         laser.setOrientation(horizontal, reversed);
         lasers.add(laser);
+    }
+
+    /**
+     * Trigger clone shake effect when swap fails
+     */
+    public static void triggerCloneShake() {
+        for (Npc npc : npcs) {
+            if (npc.getID() == 1) { // Clone NPC
+                npc.triggerFailedSwapEffect();
+                break;
+            }
+        }
     }
 
 }

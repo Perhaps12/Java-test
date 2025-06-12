@@ -64,7 +64,6 @@ public class Laser extends Entity {
     public void setOrientation(boolean horizontal, boolean reversed) {
         this.isHorizontal = horizontal;
         this.isReversed = reversed;
-        this.spritesNeedUpdate = true; // Mark sprites for recaching
 
         System.out.println("Laser orientation set - horizontal: " + horizontal + ", reversed: " + reversed);
     }
@@ -122,8 +121,6 @@ public class Laser extends Entity {
      * Cache transformed sprites for performance optimization
      */
     private void cacheTransformedSprites() {
-        if (!spritesNeedUpdate)
-            return;
 
         cachedLaserSprites = new BufferedImage[laserAnimationSprites.length];
         cachedBaseSprites = new BufferedImage[laserBaseSprites.length];
@@ -201,8 +198,6 @@ public class Laser extends Entity {
                 cachedBaseSprites[i] = transformedSprite;
             }
         }
-
-        spritesNeedUpdate = false;
     }
 
     /**
@@ -461,19 +456,22 @@ public class Laser extends Entity {
                         // Horizontal laser: heads at left and right edges
                         head1CenterY = head2CenterY = y + height / 2; // Center vertically in hitbox
 
-                        // Head 1 at left edge
+                        // Head 1 at left edge - align sprite left edge with laser left edge
                         head1CenterX = hitboxLeft + headSize / 2;
-                        // Head 2 at right edge
-                        head2CenterX = hitboxRight - headSize / 2;
-
-                        // Draw both heads (both normal for horizontal)
+                        // Head 2 at right edge - align sprite right edge with laser right edge
+                        head2CenterX = hitboxRight - headSize / 2; // Draw both heads with proper alignment
                         int head1DrawX = (int) (head1CenterX - headSize / 2);
                         int head1DrawY = (int) (head1CenterY - headSize / 2);
-                        int head2DrawX = (int) (head2CenterX - headSize / 2);
+                        // For right head, position so its right edge aligns with laser right edge
+                        int head2DrawX = (int) (hitboxRight - headSize);
                         int head2DrawY = (int) (head2CenterY - headSize / 2);
 
+                        // Draw left head (normal orientation)
                         g2d.drawImage(baseSprite, head1DrawX, head1DrawY, headSize, headSize, null);
-                        g2d.drawImage(baseSprite, head2DrawX, head2DrawY, headSize, headSize, null);
+
+                        // Draw right head (flipped horizontally to face opposite direction)
+                        BufferedImage flippedSprite = flipImageHorizontally(baseSprite);
+                        g2d.drawImage(flippedSprite, head2DrawX, head2DrawY, headSize, headSize, null);
                     } else {
                         // Vertical laser: heads at top and bottom edges
                         head1CenterX = head2CenterX = x + width / 2; // Center horizontally in hitbox
@@ -513,5 +511,72 @@ public class Laser extends Entity {
                 }
             }
         }
+    }
+
+    /**
+     * Override box() method to use top-left positioning instead of center-based
+     * This ensures collision detection aligns with the visual laser positioning
+     */
+    @Override
+    public double[] box() {
+        // Use top-left positioning to match the visual laser
+        double laserLeft = x;
+        double laserRight = x + width;
+        double laserTop = y;
+        double laserBottom = y + height;
+
+        return new double[] { laserLeft, laserRight, laserTop, laserBottom };
+    }
+
+    /**
+     * Override isColliding method to handle top-left positioned laser
+     * properly with center-based positioned entities
+     */
+    @Override
+    public boolean isColliding(GameObject other) {
+        // Laser uses top-left positioning
+        double laserLeft = x;
+        double laserRight = x + width;
+        double laserTop = y;
+        double laserBottom = y + height;
+
+        // Other entity uses center-based positioning
+        double otherLeft = other.getX() - other.getWidth() / 2;
+        double otherRight = other.getX() + other.getWidth() / 2;
+        double otherTop = other.getY() - other.getHeight() / 2;
+        double otherBottom = other.getY() + other.getHeight() / 2;
+
+        return laserRight > otherLeft &&
+                laserLeft < otherRight &&
+                laserBottom > otherTop &&
+                laserTop < otherBottom;
+    }
+
+    /**
+     * Override isCollidingWithWall method to handle top-left positioned laser
+     * properly with top-left positioned walls
+     */
+    @Override
+    protected boolean isCollidingWithWall(Wall wall) {
+        // Small tolerance to account for floating-point precision
+        final double TOLERANCE = 0.01;
+
+        // Laser uses top-left positioning
+        double laserLeft = x;
+        double laserRight = x + width;
+        double laserTop = y;
+        double laserBottom = y + height;
+
+        // Wall also uses top-left positioning
+        double wallLeft = wall.getX();
+        double wallRight = wall.getX() + wall.getWidth();
+        double wallTop = wall.getY();
+        double wallBottom = wall.getY() + wall.getHeight();
+
+        // Use tolerance to prevent edge-clipping issues
+        return (laserRight - TOLERANCE) > wallLeft &&
+                (laserLeft + TOLERANCE) < wallRight &&
+                (laserBottom - TOLERANCE) > wallTop &&
+                (laserTop + TOLERANCE) < wallBottom;
     }
 }

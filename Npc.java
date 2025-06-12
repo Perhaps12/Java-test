@@ -27,6 +27,14 @@ public class Npc extends Entity {
     private static final double SQUASH_VELOCITY_THRESHOLD = 6.0;
     private static final double STRETCH_VELOCITY_THRESHOLD = -6.0;
 
+    // Failed swap effect for clone
+    private boolean failedSwapActive = false;
+    private int failedSwapDuration = 0;
+    private double shakeOffsetX = 0;
+    private int shakeTimer = 0;
+    private static final int FAILED_SWAP_DURATION = 30; // 0.5 seconds at 60fps
+    private static final double SHAKE_INTENSITY = 3.0; // Side-to-side shake amount
+
     /**
      * Create a new NPC with position and type ID
      */
@@ -35,7 +43,7 @@ public class Npc extends Entity {
         // set specific values below
         super(centerX, centerY, 30, 30, "");
 
-        this.ID = npcID;        // Set sprite and hitbox based on NPC type
+        this.ID = npcID; // Set sprite and hitbox based on NPC type
         switch (npcID) {
             case 1 -> {
                 this.spritePath = "/Sprites/Clone/Idle/sprite_0.png"; // Default to first idle sprite
@@ -212,7 +220,25 @@ public class Npc extends Entity {
         for (int i = 0; i < iFrames.length; i++) {
             iFrames[i] = Math.max(iFrames[i] - 1, 0);
         }
-    }    @Override
+
+        // Update failed swap effect for clone
+        if (ID == 1 && failedSwapActive) {
+            failedSwapDuration--;
+            shakeTimer++;
+
+            // Create side-to-side shake animation
+            shakeOffsetX = Math.sin(shakeTimer * 0.8) * SHAKE_INTENSITY;
+
+            // End effect when duration expires
+            if (failedSwapDuration <= 0) {
+                failedSwapActive = false;
+                shakeOffsetX = 0;
+                shakeTimer = 0;
+            }
+        }
+    }
+
+    @Override
     public void draw(Graphics g) {
         if (ID == 1 && sprite != null) {
             // Custom drawing for clone with sprite flipping
@@ -237,16 +263,45 @@ public class Npc extends Entity {
                 finalDrawX = drawX + spriteRenderWidth; // Move draw point to right edge
                 finalWidth = -spriteRenderWidth; // Negative width flips horizontally
             }
-
             if (flipVertical) {
                 finalDrawY = drawY + spriteRenderHeight; // Move draw point to bottom edge
                 finalHeight = -spriteRenderHeight; // Negative height flips vertically
-            }            // Apply transparency to make clone more transparent
-            AlphaComposite originalComposite = (AlphaComposite) g2d.getComposite();
-            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.7f)); // 70% opacity
+            } // Apply shake offset for failed swap effect
+            if (failedSwapActive) {
+                finalDrawX += (int) shakeOffsetX;
+            }
 
-            // Draw the sprite with calculated flipping
-            g2d.drawImage(sprite, finalDrawX, finalDrawY, finalWidth, finalHeight, null);
+            // Apply transparency to make clone more transparent
+            AlphaComposite originalComposite = (AlphaComposite) g2d.getComposite();
+            float opacity = failedSwapActive ? 0.8f : 0.7f; // Slightly more visible during failed swap
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity));
+
+            // Apply red tint to sprite for failed swap effect
+            if (failedSwapActive) {
+                // Calculate tint intensity based on remaining duration
+                float tintIntensity = (float) failedSwapDuration / FAILED_SWAP_DURATION;
+
+                // Create a red-tinted version of the sprite
+                BufferedImage tintedSprite = new BufferedImage(sprite.getWidth(), sprite.getHeight(),
+                        BufferedImage.TYPE_INT_ARGB);
+                Graphics2D tintGraphics = tintedSprite.createGraphics();
+
+                // Draw the original sprite
+                tintGraphics.drawImage(sprite, 0, 0, null);
+
+                // Apply red tint using multiply blend mode
+                tintGraphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_ATOP, tintIntensity * 0.6f));
+                tintGraphics.setColor(Color.RED);
+                tintGraphics.fillRect(0, 0, sprite.getWidth(), sprite.getHeight());
+
+                tintGraphics.dispose();
+
+                // Draw the tinted sprite
+                g2d.drawImage(tintedSprite, finalDrawX, finalDrawY, finalWidth, finalHeight, null);
+            } else {
+                // Draw the normal sprite with calculated flipping
+                g2d.drawImage(sprite, finalDrawX, finalDrawY, finalWidth, finalHeight, null);
+            }
 
             // Restore original composite
             g2d.setComposite(originalComposite);
@@ -267,5 +322,17 @@ public class Npc extends Entity {
 
     public void setDamage(int damage) {
         this.damage = damage;
+    }
+
+    /**
+     * Trigger failed swap effect for clone (red tint and shake)
+     */
+    public void triggerFailedSwapEffect() {
+        if (ID == 1) { // Only for clone NPC
+            failedSwapActive = true;
+            failedSwapDuration = FAILED_SWAP_DURATION;
+            shakeTimer = 0;
+            shakeOffsetX = 0;
+        }
     }
 }
