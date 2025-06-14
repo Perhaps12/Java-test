@@ -39,8 +39,8 @@ public class GameEngine { // Game entities
     public static void initializeGame() {
         currentLevel = new Level("Main Level", LEVEL_WIDTH, LEVEL_HEIGHT, 10);
         currentLevel.setPlayerSpawnPoint(50, -100);
-        createLevelLayouts(1);
-        createPlatformLayout(1);
+        createLevelLayouts(3);
+        createPlatformLayout(3);
         Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
         player = new Player("/Sprites/Character/Idle/sprite_0.png", playerSpawn.getX(), playerSpawn.getY()); // Create
                                                                                                              // NPCs at
@@ -69,6 +69,9 @@ public class GameEngine { // Game entities
 
                 case 2 -> {
                     reader = new BufferedReader(new FileReader("Static//Level2.txt"));
+                }
+                case 3 -> {
+                    reader = new BufferedReader(new FileReader("Static//Level3.txt"));
                 }
                 default -> {
                     reader = new BufferedReader(new FileReader("Static//Level0.txt"));
@@ -122,7 +125,7 @@ public class GameEngine { // Game entities
                 currentLevel.addPlatformsFromLayout(levelLayout.get(1), 1650, -60);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(5), 1900, 380);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(0), 2100, -60);
-                addPermanentDualHeadLaser(1421.5, -75, 30, 225, false, false);
+                addPermanentDualHeadLaser(1250, -15, 400, 30, true, false);
                 addPermanentDualHeadLaser(1800, -30, 300, 30, true, false);
                 addSpike(700, -75, 36, 36, false, false);
 
@@ -137,6 +140,17 @@ public class GameEngine { // Game entities
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 625, 150);
                 addLaser(playerDeathX, playerDeathY, playerDeathX, playerDeathX, isDeathScreenActive,
                         isDeathScreenActive);
+            }
+            case 3-> {
+                currentLevel.addPlatformsFromLayout(levelLayout.get(0), -45, -60);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(1), 400, -60);
+
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 270, 120);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 170, 270);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 320, 370);
+
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 432, -370);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 423, 470);
             }
             default -> {
                 System.out.println("No platform layout found for ID: " + ID);
