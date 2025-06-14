@@ -139,7 +139,7 @@ public class GameEngine { // Game entities
             }
 
             case 2 -> {
-                currentLevel.addPlatformsFromLayout(levelLayout.get(0), -45, 0);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(0), 0, 0);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(1), 700, -375);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 625, -30);
                 addSpike(675, -200, 50, 50, true, true);
@@ -147,14 +147,30 @@ public class GameEngine { // Game entities
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 625, 150);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1100, -375);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(3), 1400, -570);
-                //addLaser(0, 155 , 625 , 50 ,true , false);
+                addLaser(0, 165 , 625 , 30 ,true , false);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1000, -100);
-                addPermanentDualHeadLaser(850, -200, 550, 30, true, false);
+                addPermanentDualHeadLaser(850, -250, 550, 30, true, false);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1200, -100);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(4), 1200, 150);
-                currentLevel.addPlatformsFromLayout(levelLayout.get(3), 975, 100);
-                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1000, 50);
-                
+                currentLevel.addPlatformsFromLayout(levelLayout.get(3), 975, 200);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1000, 70);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(4), 1600, 250);
+                addPermanentDualHeadLaser(1080, 225, 120, 25, true, false);
+                addPermanentDualHeadLaser(1350, 270, 255, 25, true, false);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(5), 1600, -250);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1900, -500);
+                addPermanentDualHeadLaser(1925, -445, 25, 200, false, false);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2050, 320);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(3), 2250, 200);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2150, 80);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1850, 80);
+                addLaser(1925, -445, 25, 200, false, false);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2350, -140);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2600, -240);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2550, 320);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(0), 2700, -400);
+                addPermanentDualHeadLaser(1750, 325, 300, 25, true, false);
+
             }
             default -> {
                 System.out.println("No platform layout found for ID: " + ID);

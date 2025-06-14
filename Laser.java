@@ -233,7 +233,7 @@ public class Laser extends Entity {
         long now = System.nanoTime();
         double lifetime = (now - creationTime) / 1_000_000_000.0; // Convert to seconds
 
-        if (lifetime > 2) {
+        if (lifetime > 1.25) {
             // System.out.println(lifetime + " " + state);
             state = !state;
             creationTime = now;
