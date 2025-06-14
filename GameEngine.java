@@ -125,9 +125,19 @@ public class GameEngine { // Game entities
                 currentLevel.addPlatformsFromLayout(levelLayout.get(1), 1650, -60);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(5), 1900, 380);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(0), 2100, -60);
-                addPermanentDualHeadLaser(1250, -15, 400, 30, true, false);
-                addPermanentDualHeadLaser(1800, -30, 300, 30, true, false);
+                addPermanentDualHeadLaser(1421.5, -75, 30, 225, false, false);
+                addPermanentDualHeadLaser(1800, -15, 300, 30, true, false);
+                addPermanentDualHeadLaser(2002.5, -127, 30, 507.5, false, false);
+                // addPermanentDualHeadLaser(1800, 50, 300, 30, true, false);
                 addSpike(700, -75, 36, 36, false, false);
+                addSpike(736, -75, 36, 36, false, false);
+                addSpike(1792, 300, 36, 36, true, false);
+                addSpike(1792, 336, 36, 36, true, false);
+                addSpike(1792, 372, 36, 36, true, false);
+                addSpike(1792, 408, 36, 36, true, false);
+                addSpike(1683, 346, 36, 36, true, true);
+                addSpike(1683, 382, 36, 36, true, true);
+                addSpike(1683, 418, 36, 36, true, true);
 
             }
 
@@ -276,20 +286,19 @@ public class GameEngine { // Game entities
         for (Laser laser : lasers) {
             laser.draw(g);
             // Only draw hitbox when laser is dangerous
-            if (laser.isDangerous()) {
-            g2d.setColor(Color.RED);
-            g2d.setStroke(new BasicStroke(2.0f));
-            double[] box = laser.box();
-            double left = box[0];
-            double right = box[1];
-            double top = box[2];
-            double bottom = box[3];
-            int boxWidth = (int) (right - left);
-            int boxHeight = (int) (bottom - top);
-            g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
-            }
+            // if (laser.isDangerous()) {
+            // g2d.setColor(Color.RED);
+            // g2d.setStroke(new BasicStroke(2.0f));
+            // double[] box = laser.box();
+            // double left = box[0];
+            // double right = box[1];
+            // double top = box[2];
+            // double bottom = box[3];
+            // int boxWidth = (int) (right - left);
+            // int boxHeight = (int) (bottom - top);
+            // g2d.drawRect((int) left, (int) top, boxWidth, boxHeight);
+            // }
             // hitbox
-            
         }
 
         // Draw spikes
@@ -384,7 +393,7 @@ public class GameEngine { // Game entities
         // Check collision with any laser
         boolean hitLaser = false;
         for (Laser laser : lasers) {
-            if (player.isColliding(laser) && laser.isDangerous()) {
+            if (laser.isColliding(player) && laser.isDangerous()) {
                 // Reset laser orientation on death
                 laser.resetOrientation();
                 hitLaser = true;
@@ -394,7 +403,7 @@ public class GameEngine { // Game entities
         // Check collision with any spike
         boolean hitSpike = false;
         for (Spike spike : spikes) {
-            if (player.isColliding(spike) && spike.isDangerous()) {
+            if (spike.isColliding(player) && spike.isDangerous()) {
                 // Reset spike orientation on death
                 spike.resetOrientation();
                 hitSpike = true;

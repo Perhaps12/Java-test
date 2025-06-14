@@ -143,7 +143,7 @@ public class Projectile extends Entity {
                 // actual velocity
                 // Summon in 45deg intervals expand outward following logarithmic equation
                 double logDist = velocity.getX();
-                double dist = Math.log10(logDist) / Math.log10(1.3); // Calculate distance from log as per your formula
+                double dist = Math.log10(logDist) / Math.log10(1.07); // Calculate distance from log as per your formula
                 double angle = velocity.getY();
 
                 // Calculate new position based on initial death position
@@ -151,10 +151,10 @@ public class Projectile extends Entity {
                 y = initY + dist * Math.sin(Math.toRadians(angle));
 
                 // Update angle and log distance for next frame
-                // double lifetime = (System.nanoTime() - creationTime) / 1_000_000_000.0; 
-                angle = (angle + 1) % 360;
-                logDist += 30;
-                scale = Math.min(scale+2, 30);
+                double lifetime = (System.nanoTime() - creationTime) / 1_000_000_000.0; 
+                angle = (angle + (0.9 - lifetime) * 6) % 360;
+                logDist += 4;
+                scale = Math.min(scale+2, 60);
 
                 // Update velocity for next frame
                 velocity.setX(logDist);
