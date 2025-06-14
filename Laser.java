@@ -473,7 +473,7 @@ public class Laser extends Entity {
                         BufferedImage flippedSprite = flipImageHorizontally(baseSprite);
                         g2d.drawImage(flippedSprite, head2DrawX, head2DrawY, headSize, headSize, null);
                     } else {
-                        // Vertical laser: heads at top and bottom edges
+                        // heads at top and bottom edges
                         head1CenterX = head2CenterX = x + width / 2; // Center horizontally in hitbox
 
                         // Head 1 at top edge (normal orientation)
