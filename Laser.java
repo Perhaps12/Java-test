@@ -1,7 +1,7 @@
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import javax.imageio.ImageIO;
 import java.io.IOException;
+import javax.imageio.ImageIO;
 
 public class Laser extends Entity {
     private long creationTime = 0;

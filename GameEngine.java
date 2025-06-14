@@ -39,8 +39,8 @@ public class GameEngine { // Game entities
     public static void initializeGame() {
         currentLevel = new Level("Main Level", LEVEL_WIDTH, LEVEL_HEIGHT, 10);
         currentLevel.setPlayerSpawnPoint(50, -100);
-        createLevelLayouts(1);
-        createPlatformLayout(1);
+        createLevelLayouts(2);
+        createPlatformLayout(2);
         Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
         player = new Player("/Sprites/Character/Idle/sprite_0.png", playerSpawn.getX(), playerSpawn.getY()); // Create
                                                                                                              // NPCs at
@@ -135,8 +135,16 @@ public class GameEngine { // Game entities
                 addSpike(675, -200, 50, 50, true, true);
                 addSpike(675, -250, 50, 50, true, true);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 625, 150);
-                addLaser(playerDeathX, playerDeathY, playerDeathX, playerDeathX, isDeathScreenActive,
-                        isDeathScreenActive);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1100, -375);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(3), 1400, -570);
+                //addLaser(0, 155 , 625 , 50 ,true , false);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1000, -100);
+                addPermanentDualHeadLaser(850, -200, 550, 30, true, false);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1200, -100);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(4), 1200, 150);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(3), 975, 100);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1000, 50);
+                
             }
             default -> {
                 System.out.println("No platform layout found for ID: " + ID);
