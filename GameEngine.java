@@ -173,6 +173,11 @@ public class GameEngine { // Game entities
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2550, 320);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(0), 2700, -400);
                 addPermanentDualHeadLaser(1750, 325, 300, 25, true, false);
+                addSpike(750, 400, 50, 50, false, true);
+                addSpike(875, 250, 50, 50, true, false);
+                addSpike(950, 250, 50, 50, true, true);
+                //addSpike(675, -250, 50, 50, true, true);
+                addPermanentDualHeadLaser(825, -565, 20, 200, false, false);
 
             }
             case 3-> {
