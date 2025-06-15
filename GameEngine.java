@@ -159,7 +159,7 @@ public class GameEngine { // Game entities
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1000, 70);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(4), 1600, 250);
                 addPermanentDualHeadLaser(1080, 225, 120, 25, true, false);
-                addPermanentDualHeadLaser(1350, 270, 255, 25, true, false);
+                addPermanentDualHeadLaser(1350, 260, 255, 40, true, false);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(5), 1600, -250);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1900, -500);
                 addPermanentDualHeadLaser(1925, -445, 25, 200, false, false);
@@ -172,13 +172,18 @@ public class GameEngine { // Game entities
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2600, -240);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2550, 320);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(0), 2700, -400);
-                addPermanentDualHeadLaser(1750, 325, 300, 25, true, false);
+                addPermanentDualHeadLaser(1750, 315, 300, 35, true, false);
+                addPermanentDualHeadLaser(1920, -275, 425, 25, true, false);
+                addPermanentDualHeadLaser(1920, -400, 425, 25, true, false);
                 addSpike(750, 400, 50, 50, false, true);
                 addSpike(875, 250, 50, 50, true, false);
                 addSpike(950, 250, 50, 50, true, true);
-                //addSpike(675, -250, 50, 50, true, true);
-                addPermanentDualHeadLaser(825, -565, 20, 200, false, false);
-
+                addSpike(1545, -120, 75, 75, true, false);
+                addPermanentDualHeadLaser(825, -570, 20, 200, false, false);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(6), 1000, 0);
+                addPermanentDualHeadLaser(1920, 85, 230, 20, true, false);
+                addSpike(1440, 40, 50, 50, false, true);
+                addSpike(2675, -375, 50, 50, true, true);
             }
             case 3-> {
                 currentLevel.addPlatformsFromLayout(levelLayout.get(0), -45, -60);
