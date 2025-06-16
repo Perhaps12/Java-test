@@ -253,6 +253,12 @@ public class Player extends Entity {
                                                                            // 10 frames
                 // System.out.println("fall distance land " + fallDistance);
 
+                // Play hard landing sound
+                AudioManager audioManager = GameEngine.getAudioManager();
+                if (audioManager != null) {
+                    audioManager.playHardLandingSound();
+                }
+
                 // Only trigger if it's a significant landing or no current shake
                 if (camera.shouldOverrideShake(shakeIntensity)) {
                     camera.shake(shakeIntensity, shakeDuration, Camera.ShakeType.CIRCULAR);
@@ -327,6 +333,11 @@ public class Player extends Entity {
                 hDirection2 = -1;
                 velocity2.setX(15);
                 jumped = true;
+                // Play jump sound
+                AudioManager audioManager = GameEngine.getAudioManager();
+                if (audioManager != null) {
+                    audioManager.playJumpSound();
+                }
                 // Reset fall tracking for wall jump
                 wasFalling = false;
                 fallStartY = y;
@@ -336,6 +347,11 @@ public class Player extends Entity {
                 hDirection2 = 1;
                 velocity2.setX(15);
                 jumped = true;
+                // Play jump sound
+                AudioManager audioManager = GameEngine.getAudioManager();
+                if (audioManager != null) {
+                    audioManager.playJumpSound();
+                }
                 // Reset fall tracking for wall jump
                 wasFalling = false;
                 fallStartY = y;
@@ -344,6 +360,11 @@ public class Player extends Entity {
                 y -= 3 * swap;
                 velocity.setY(16);
                 jumped = true;
+                // Play jump sound
+                AudioManager audioManager = GameEngine.getAudioManager();
+                if (audioManager != null) {
+                    audioManager.playJumpSound();
+                }
                 // Reset fall tracking for regular jump
                 wasFalling = false;
                 fallStartY = y;
@@ -354,6 +375,11 @@ public class Player extends Entity {
                 velocity.setY(14);
                 jumped = true;
                 airJump = false;
+                // Play jump sound
+                AudioManager audioManager = GameEngine.getAudioManager();
+                if (audioManager != null) {
+                    audioManager.playJumpSound();
+                }
                 // Reset fall tracking for double jump
                 wasFalling = false;
                 fallStartY = y;
@@ -372,8 +398,7 @@ public class Player extends Entity {
 
         // Fast fall
         if (GameEngine.isKeyPressed(KeyEvent.VK_DOWN)) {
-            acceleration.setY(-1.6);
-        } // Dash
+            acceleration.setY(-1.6);        } // Dash
         if (GameEngine.isKeyPressed(KeyEvent.VK_C)) {
             if (dashCool == 0) {
                 velocity2.setY(22);
@@ -381,6 +406,11 @@ public class Player extends Entity {
                 dashCool = 45;
                 // Add small shake effect when starting dash
                 camera.shake(12, 8, Camera.ShakeType.RANDOM);
+                // Play dash sound
+                AudioManager audioManager = GameEngine.getAudioManager();
+                if (audioManager != null) {
+                    audioManager.playDashSound();
+                }
             }
         }
 
@@ -613,9 +643,7 @@ public class Player extends Entity {
                 double cloneX = clone.getX();
                 double cloneY = clone.getY();
 
-                boolean isValid = isValidPosition(cloneX, cloneY);
-
-                if (isValid) {
+                boolean isValid = isValidPosition(cloneX, cloneY);                if (isValid) {
                     // Position is safe, perform swap
                     clone.setPosition(x, y);
                     x = cloneX;
@@ -623,6 +651,12 @@ public class Player extends Entity {
                     shot[2] = true;
                     swap *= -1;
                     fallStartY = y; // Reset fall start position on swap so it doesn't trigger hard landing
+
+                    // Play swap sound
+                    AudioManager audioManager = GameEngine.getAudioManager();
+                    if (audioManager != null) {
+                        audioManager.playSwapSound();
+                    }
 
                     // Add shake effect for character swap
                     Camera camera = Camera.getInstance();

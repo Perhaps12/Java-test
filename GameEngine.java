@@ -6,7 +6,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * Central game engine class that manages game state
  */
-public class GameEngine { // Game entities
+public class GameEngine { 
+    // Audio manager
+    private static AudioManager audioManager;
+    
+    // Game entities
     private static Player player;
     private static final ArrayList<Projectile> projectiles = new ArrayList<>();
     private static final ArrayList<Spike> spikes = new ArrayList<>();
@@ -17,6 +21,11 @@ public class GameEngine { // Game entities
     private static final int MAX_PROJECTILES = 1000;
     private static final ConcurrentLinkedQueue<Projectile> queuedProjectiles = new ConcurrentLinkedQueue<>();
     private static final Set<Integer> keys = new HashSet<>();
+
+    // Level progression system
+    private static int currentLevelID = 1; // Start with level 1
+    private static final int MAX_LEVEL_ID = 3; // Maximum level available
+    private static final double LEVEL_END_BOUNDARY = 0.95; // Progress when player reaches 95% of level width
 
     // Death screen system
     private static boolean isDeathScreenActive = false;
@@ -31,16 +40,19 @@ public class GameEngine { // Game entities
 
     // Level dimensions
     public static final int LEVEL_WIDTH = GameSettings.getInstance().getLevelWidth();
-    public static final int LEVEL_HEIGHT = GameSettings.getInstance().getLevelHeight();
-
-    /**
+    public static final int LEVEL_HEIGHT = GameSettings.getInstance().getLevelHeight();    /**
      * Initialize game
      */
     public static void initializeGame() {
+        // Initialize audio manager
+        audioManager = AudioManager.getInstance();
+        audioManager.playBackgroundMusic();
+        
         currentLevel = new Level("Main Level", LEVEL_WIDTH, LEVEL_HEIGHT, 10);
         currentLevel.setPlayerSpawnPoint(50, -100);
-        createLevelLayouts(2);
-        createPlatformLayout(2);
+        currentLevelID = 1; // Start with level 1
+        createLevelLayouts(currentLevelID);
+        createPlatformLayout(currentLevelID);
         Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
         player = new Player("/Sprites/Character/Idle/sprite_0.png", playerSpawn.getX(), playerSpawn.getY()); // Create
                                                                                                              // NPCs at
@@ -60,27 +72,30 @@ public class GameEngine { // Game entities
     }
 
     private static void createLevelLayouts(int ID) {
+        // Clear existing level layout data to prevent contamination between levels
+        levelLayout.clear();
+
         BufferedReader reader;
         try {
             switch (ID) {
                 case 1 -> {
-                    reader = new BufferedReader(new FileReader("Static//Level1.txt"));
+                    reader = new BufferedReader(new FileReader("Static/level1.txt"));
                 }
 
                 case 2 -> {
-                    reader = new BufferedReader(new FileReader("Static//Level2.txt"));
+                    reader = new BufferedReader(new FileReader("Static/level2.txt"));
                 }
                 case 3 -> {
-                    reader = new BufferedReader(new FileReader("Static//Level3.txt"));
+                    reader = new BufferedReader(new FileReader("Static/level3.txt"));
                 }
                 default -> {
-                    reader = new BufferedReader(new FileReader("Static//Level0.txt"));
+                    reader = new BufferedReader(new FileReader("Static/level0.txt"));
                 }
-
             }
             // Read level layout from file
-            while (reader.ready()) {
-                String dimensions[] = reader.readLine().split(" ");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String dimensions[] = line.split(" ");
                 int r = Integer.parseInt(dimensions[0]);
                 int c = Integer.parseInt(dimensions[1]);
                 boolean layout[][] = new boolean[r][c];
@@ -100,10 +115,12 @@ public class GameEngine { // Game entities
                     }
                 }
                 levelLayout.add(layout);
-
+                System.out.println("Loaded layout block: " + r + "x" + c + " (type " + dimensions[2] + ")");
             }
+            reader.close();
+            System.out.println("Successfully loaded " + levelLayout.size() + " layout blocks for level " + ID);
         } catch (Exception e) {
-            System.out.println("err"); // kenny debug
+            System.out.println("Error loading level " + ID + ": " + e.getMessage());
             e.printStackTrace();
         }
 
@@ -150,7 +167,7 @@ public class GameEngine { // Game entities
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 625, 150);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1100, -375);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(3), 1400, -570);
-                addLaser(0, 165 , 625 , 30 ,true , false);
+                addLaser(0, 165, 625, 30, true, true);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1000, -100);
                 addPermanentDualHeadLaser(850, -250, 550, 30, true, false);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1200, -100);
@@ -162,42 +179,41 @@ public class GameEngine { // Game entities
                 addPermanentDualHeadLaser(1350, 260, 255, 40, true, false);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(5), 1600, -250);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1900, -500);
-                addPermanentDualHeadLaser(1925, -445, 25, 200, false, false);
+                addPermanentDualHeadLaser(1925, -445, 30, 200, false, false);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2050, 320);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(3), 2250, 200);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2150, 80);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 1850, 80);
-                addLaser(1925, -445, 25, 200, false, false);
+                addLaser(1925, -445, 30, 200, false, false);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2350, -140);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2600, -240);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 2550, 320);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(0), 2700, -400);
-                addPermanentDualHeadLaser(1750, 315, 300, 35, true, false);
-                addPermanentDualHeadLaser(1920, -275, 425, 25, true, false);
-                addPermanentDualHeadLaser(1920, -400, 425, 25, true, false);
+                addPermanentDualHeadLaser(1750, 315, 300, 30, true, false);
+                addPermanentDualHeadLaser(1920, -275, 425, 30, true, false);
+                addPermanentDualHeadLaser(1920, -400, 425, 30, true, false);
                 addSpike(750, 400, 50, 50, false, true);
                 addSpike(875, 250, 50, 50, true, false);
                 addSpike(950, 250, 50, 50, true, true);
                 addSpike(1545, -120, 75, 75, true, false);
-                addPermanentDualHeadLaser(825, -570, 20, 200, false, false);
-                currentLevel.addPlatformsFromLayout(levelLayout.get(6), 1000, 0);
-                addPermanentDualHeadLaser(1920, 85, 230, 20, true, false);
+                addPermanentDualHeadLaser(825, -570, 30, 200, false, false);
+                currentLevel.addPlatformsFromLayout(levelLayout.get(6), 1000, -15);
+                addPermanentDualHeadLaser(1920, 85, 230, 30, true, false);
                 addSpike(1440, 40, 50, 50, false, true);
                 addSpike(2675, -375, 50, 50, true, true);
             }
-            case 3-> {
+            case 3 -> {
                 currentLevel.addPlatformsFromLayout(levelLayout.get(0), -45, -60);
-                
+
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 270, 120);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 170, 270);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 320, 370);
-                
+
                 currentLevel.addPlatformsFromLayout(levelLayout.get(1), 400, -60);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 423, -400);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(2), 423, 470);
                 addPermanentDualHeadLaser(445, -355, 30, 295, false, false);
                 addPermanentDualHeadLaser(445, 60, 30, 410, false, false);
-
 
                 currentLevel.addPlatformsFromLayout(levelLayout.get(3), 550, -300);
                 currentLevel.addPlatformsFromLayout(levelLayout.get(3), 1050, -300);
@@ -228,9 +244,8 @@ public class GameEngine { // Game entities
                 currentLevel.addPlatformsFromLayout(levelLayout.get(4), 2400, -600);
 
                 currentLevel.addPlatformsFromLayout(levelLayout.get(5), 2500, 50);
-                currentLevel.addPlatformsFromLayout(levelLayout.get(6), 2600-65, -520);
-                addSpike(2500+45, 325+15-50, 30, 30, false, true);
-
+                currentLevel.addPlatformsFromLayout(levelLayout.get(6), 2600 - 65, -520);
+                addSpike(2500 + 45, 325 + 15 - 50, 30, 30, false, true);
 
             }
             default -> {
@@ -247,11 +262,12 @@ public class GameEngine { // Game entities
         // Process projectiles from queue
         while (!queuedProjectiles.isEmpty() && projectiles.size() < MAX_PROJECTILES) {
             projectiles.add(queuedProjectiles.poll());
-        }
-
-        // Update player
+        } // Update player
         if (player != null) {
             player.update();
+
+            // Check for level progression
+            checkLevelProgression();
         }
 
         // Update NPCs
@@ -352,7 +368,7 @@ public class GameEngine { // Game entities
         for (Projectile p : projectiles) {
             p.draw(g);
         }
-        
+
         // Draw lasers
         for (Laser laser : lasers) {
             laser.draw(g);
@@ -492,6 +508,11 @@ public class GameEngine { // Game entities
      */
     private static void startDeathScreen() {
         if (player != null && !isDeathScreenActive) {
+            // Play death sound
+            if (audioManager != null) {
+                audioManager.playDeathSound();
+            }
+            
             // Store death position and start death screen
             playerDeathX = player.getX();
             playerDeathY = player.getY();
@@ -524,6 +545,13 @@ public class GameEngine { // Game entities
      */
     public static Level getCurrentLevel() {
         return currentLevel;
+    }
+
+    /**
+     * Get the audio manager instance
+     */
+    public static AudioManager getAudioManager() {
+        return audioManager;
     }
 
     /**
@@ -635,4 +663,106 @@ public class GameEngine { // Game entities
         }
     }
 
+    /**
+     * Check if player has reached the end of the current level
+     */
+    private static void checkLevelProgression() {
+        if (player == null || currentLevel == null) {
+            return;
+        }
+
+        // Get player position and level width
+        double playerX = player.getX();
+        double levelWidth = currentLevel.getLevelWidth();
+
+        // Check if player has reached the end boundary (95% of level width)
+        if (playerX >= levelWidth * LEVEL_END_BOUNDARY) {
+            progressToNextLevel();
+        }
+    }
+
+    /**
+     * Progress to the next level
+     */
+    private static void progressToNextLevel() {
+        if (currentLevelID >= MAX_LEVEL_ID) {
+            System.out.println("Congratulations! You've completed all levels!");
+            // Could add end game functionality here
+            return;
+        }
+
+        // Increment level ID
+        currentLevelID++;
+        System.out.println("Progressing to level " + currentLevelID);
+
+        // Clear existing entities
+        clearLevelEntities();
+
+        // Load next level
+        loadNextLevel(currentLevelID);
+    }
+
+    /**
+     * Clear all level-specific entities when transitioning between levels
+     */
+    private static void clearLevelEntities() {
+        // Clear projectiles
+        projectiles.clear();
+        queuedProjectiles.clear();
+
+        // Clear lasers
+        lasers.clear();
+
+        // Clear spikes
+        spikes.clear();
+
+        // Clear NPCs (except player)
+        npcs.clear();
+
+        // Clear water effects
+        WaterBoundary.getInstance().clearEffects();
+
+        System.out.println("Cleared level entities for level transition");
+    }
+
+    /**
+     * Load the next level with specified ID
+     */
+    private static void loadNextLevel(int levelID) {
+        try {
+            // Create new level
+            currentLevel = new Level("Level " + levelID, LEVEL_WIDTH, LEVEL_HEIGHT, 10);
+            currentLevel.setPlayerSpawnPoint(50, -100);
+
+            // Load level layout and platforms
+            createLevelLayouts(levelID);
+            createPlatformLayout(levelID);
+
+            // Reset player to spawn point
+            Vector2D playerSpawn = currentLevel.getPlayerSpawnPoint();
+            if (player != null) {
+                player.setPosition(playerSpawn.getX(), playerSpawn.getY());
+                player.setSwap(1); // Reset gravity to normal
+            }
+
+            // Recreate NPCs for new level
+            ArrayList<Vector2D> npcSpawns = currentLevel.getNpcSpawnPoints();
+            if (npcSpawns.size() > 1) {
+                Vector2D cloneSpawn = npcSpawns.get(1);
+                npcs.add(new Npc(cloneSpawn.getX(), cloneSpawn.getY(), 1)); // Clone NPC
+            }
+            System.out.println("Successfully loaded level " + levelID);
+
+        } catch (Exception e) {
+            System.err.println("Error loading level " + levelID + ": " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Get the current level ID
+     */
+    public static int getCurrentLevelID() {
+        return currentLevelID;
+    }
 }
